@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>9路盤 次の一手問題集</title>
+  <!-- PWA & ホーム画面追加用設定 -->
+  <meta name="theme-color" content="#020617">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%229%E8%B7%AF%E7%9B%A4%20%E6%AC%A1%E3%81%AE%E4%B8%80%E6%89%8B%22%2C%22short_name%22%3A%229%E8%B7%AF%E5%95%8F%E9%A1%8C%E9%9B%86%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23020617%22%2C%22theme_color%22%3A%22%23020617%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Crect%20width%3D'100'%20height%3D'100'%20rx%3D'20'%20fill%3D'%23d97706'%2F%3E%3Ccircle%20cx%3D'38'%20cy%3D'50'%20r%3D'22'%20fill%3D'%23111'%2F%3E%3Ccircle%20cx%3D'62'%20cy%3D'50'%20r%3D'22'%20fill%3D'%23f8fafc'%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22192x192%20512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .board-wood {
+      background: radial-gradient(circle at 50% 50%, #e0aa62 0%, #ca8a3e 100%);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), inset 0 0 0 2px #965a1e;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between">
+
+  <!-- ==================== ヘッダー ==================== -->
+  <header class="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between sticky top-0 z-20 shadow-md">
+    <div class="flex items-center space-x-2">
+      <div class="w-7 h-7 rounded-lg bg-amber-600 flex items-center justify-center text-white shadow-sm font-bold text-xs">
+        <i class="fa-solid fa-chess-board"></i>
+      </div>
+      <div>
+        <h1 class="text-xs font-bold tracking-tight text-white leading-tight">9路盤 次の一手</h1>
+      </div>
+    </div>
+
+    <!-- モード切り替えタブ -->
+    <nav class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+      <button id="navSolve" class="px-3 py-1 rounded-lg transition-all flex items-center space-x-1 bg-amber-600 text-white shadow font-semibold">
+        <i class="fa-solid fa-play text-[10px]"></i><span>解く</span>
+      </button>
+      <button id="navCreate" class="px-3 py-1 rounded-lg transition-all flex items-center space-x-1 text-slate-400 hover:text-slate-200 font-semibold">
+        <i class="fa-solid fa-plus text-[10px]"></i><span>作成</span>
+      </button>
+      <button id="navList" class="px-3 py-1 rounded-lg transition-all flex items-center space-x-1 text-slate-400 hover:text-slate-200 font-semibold">
+        <i class="fa-solid fa-list-ul text-[10px]"></i><span>一覧</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- ==================== メインコンテンツ ==================== -->
+  <main class="flex-1 max-w-lg w-full mx-auto p-3 flex flex-col justify-start pb-20">
+
+    <!-- 1. 解くモード -->
+    <section id="solveSection" class="flex flex-col space-y-3">
+      <!-- 問題ステータス・アゲハマ表示バー -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 shadow-sm flex flex-col space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span id="solveProblemIndex" class="font-mono text-xs font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded-md">#1</span>
+            <h2 id="solveProblemTitle" class="text-xs font-bold text-slate-100 truncate max-w-[170px]">問題タイトル</h2>
+            <span id="solveCategoryBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">ヨセ</span>
+          </div>
+          <button id="btnToggleReview" class="p-1.5 rounded-lg bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 transition" title="要復習ブックマーク">
+            <i id="reviewIcon" class="fa-regular fa-star text-sm"></i>
+          </button>
+        </div>
+
+        <!-- 手番 & アゲハマカウンター -->
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <!-- 手番インジケーター -->
+          <div class="flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800">
+            <div class="flex items-center space-x-1.5">
+              <span class="text-slate-400 text-[11px]">手数:</span>
+              <span id="solveMoveCount" class="font-mono font-bold text-amber-400 text-xs">1手目</span>
+            </div>
+            <div id="solveTurnIndicator" class="flex items-center space-x-1.5 font-bold">
+              <span id="solveTurnDot" class="w-3.5 h-3.5 rounded-full bg-black border border-slate-600 shadow-inner"></span>
+              <span id="solveTurnText" class="text-white text-xs">黒番</span>
+            </div>
+          </div>
+          <!-- アゲハマ表示 -->
+          <div class="flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800 font-mono">
+            <span class="text-slate-400 text-[11px]">アゲハマ</span>
+            <div class="flex items-center space-x-2">
+              <span class="flex items-center space-x-1 text-slate-200" title="黒が取った白石">
+                <span class="w-2.5 h-2.5 rounded-full bg-white border border-slate-400 inline-block"></span>
+                <span id="agehamaBlack" class="font-bold text-amber-400">0</span>
+              </span>
+              <span class="text-slate-600">/</span>
+              <span class="flex items-center space-x-1 text-slate-200" title="白が取った黒石">
+                <span class="w-2.5 h-2.5 rounded-full bg-black border border-slate-500 inline-block"></span>
+                <span id="agehamaWhite" class="font-bold text-amber-400">0</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 碁盤コンテナ（正方形を維持） -->
+      <div class="w-full aspect-square board-wood rounded-2xl p-2 relative shadow-2xl flex items-center justify-center">
+        <svg id="solveGobanSvg" viewBox="0 0 450 450" class="w-full h-full cursor-pointer touch-none"></svg>
+      </div>
+
+      <!-- 操作ボタン列（元に戻す・初期化・パス） -->
+      <div class="grid grid-cols-4 gap-1.5 text-xs">
+        <button id="btnUndoMove" class="py-1.5 px-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-medium flex items-center justify-center space-x-1 transition active:scale-95">
+          <i class="fa-solid fa-rotate-left text-[11px]"></i><span>1手戻す</span>
+        </button>
+        <button id="btnResetBoard" class="py-1.5 px-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-medium flex items-center justify-center space-x-1 transition active:scale-95">
+          <i class="fa-solid fa-arrow-rotate-right text-[11px]"></i><span>最初から</span>
+        </button>
+        <button id="btnPassMove" class="py-1.5 px-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-medium flex items-center justify-center space-x-1 transition active:scale-95">
+          <i class="fa-solid fa-forward-step text-[11px]"></i><span>パス</span>
+        </button>
+        <button id="btnShowAnswer" class="py-1.5 px-2 rounded-lg bg-amber-950/80 border border-amber-800/80 hover:bg-amber-900 text-amber-300 font-medium flex items-center justify-center space-x-1 transition active:scale-95">
+          <i class="fa-regular fa-lightbulb text-[11px]"></i><span>正解を見る</span>
+        </button>
+      </div>
+
+      <!-- 判定フィードバック & 注釈パネル -->
+      <div id="feedbackContainer" class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2">
+        <div id="feedbackInitial" class="text-xs text-slate-400 text-center py-2 flex items-center justify-center space-x-2">
+          <i class="fa-regular fa-hand-pointer text-amber-500 animate-bounce"></i>
+          <span>盤面をタップして「次の一手」を打ってください</span>
+        </div>
+
+        <!-- 判定結果 -->
+        <div id="feedbackResult" class="hidden flex flex-col space-y-2">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div class="flex items-center space-x-2">
+              <span id="feedbackIcon" class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow"></span>
+              <div>
+                <span id="feedbackTitle" class="font-bold text-xs">判定結果</span>
+                <span id="feedbackCoord" class="font-mono text-xs ml-1 text-slate-400"></span>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <button id="btnRetry" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800 border border-slate-700 hidden">
+                再挑戦
+              </button>
+              <button id="btnQuickNext" class="text-xs text-amber-300 font-bold hover:text-white px-2.5 py-1 rounded bg-amber-600/30 border border-amber-500/50 hover:bg-amber-600 flex items-center space-x-1 transition active:scale-95 hidden">
+                <span>次の問題</span><i class="fa-solid fa-arrow-right text-[10px]"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 打った手固有の注釈 -->
+          <div id="selectedMoveAnnotationBox" class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs space-y-1">
+            <div class="flex items-center justify-between font-bold text-[11px]">
+              <span class="text-amber-400 flex items-center space-x-1">
+                <i class="fa-solid fa-comment-dots"></i>
+                <span id="selectedMoveLabel">着手評価</span>
+              </span>
+              <span id="selectedMoveLeadBadge" class="font-mono text-emerald-400 bg-emerald-950/70 border border-emerald-800/60 px-1.5 py-0.2 rounded text-[10px]">
+                ±0.0目
+              </span>
+            </div>
+            <div id="selectedMoveAnnotationText" class="text-slate-300 leading-relaxed text-[11px] whitespace-pre-wrap"></div>
+          </div>
+
+          <!-- 全正解手（最大5択）の比較一覧 -->
+          <div id="allAnswersBox" class="flex flex-col space-y-1.5 pt-1">
+            <div class="text-[11px] font-bold text-slate-400 flex items-center justify-between">
+              <span>登録されている正解・有力手一覧</span>
+              <span class="text-[10px] text-slate-500">（最大5手）</span>
+            </div>
+            <div id="allAnswersList" class="space-y-1.5"></div>
+          </div>
+
+          <!-- 総合解説テキスト -->
+          <div id="explanationBox" class="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 text-xs space-y-1 mt-1">
+            <div class="font-bold text-slate-300 text-[11px] flex items-center space-x-1">
+              <i class="fa-solid fa-book-open text-amber-500"></i>
+              <span>局面の総合解説</span>
+            </div>
+            <div id="explanationText" class="text-slate-400 leading-relaxed text-[11px]"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 問題作成モード -->
+    <section id="createSection" class="hidden flex flex-col space-y-3">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-bold text-amber-400"><i class="fa-solid fa-pen mr-1"></i>局面作成</span>
+            <span class="text-slate-500">|</span>
+            <div class="flex items-center space-x-1 font-mono text-xs">
+              <span class="text-slate-400">現在:</span>
+              <strong id="editorMoveCountDisplay" class="text-amber-400 font-bold">0手目</strong>
+            </div>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <button id="btnToggleEditorTurn" class="text-[11px] font-bold px-2 py-0.5 rounded bg-black text-white border border-slate-700 active:scale-95 transition" title="手番切り替え">
+              黒番
+            </button>
+          </div>
+        </div>
+        <p class="text-[10px] text-slate-400 leading-snug">
+          盤面タップで石を配置。奇数手=黒、偶数手=白で自動同期します。石を再度タップで削除。
+        </p>
+      </div>
+
+      <!-- 作成用 碁盤 -->
+      <div class="w-full aspect-square board-wood rounded-2xl p-2 relative shadow-2xl flex items-center justify-center">
+        <svg id="editorGobanSvg" viewBox="0 0 450 450" class="w-full h-full cursor-pointer touch-none"></svg>
+      </div>
+
+      <!-- 作成用 補助ボタン -->
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <button id="btnEditorUndo" class="py-1.5 px-3 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-medium flex items-center justify-center space-x-1 transition active:scale-95">
+          <i class="fa-solid fa-rotate-left text-[11px]"></i><span>1手取り消し</span>
+        </button>
+        <button id="btnClearEditorBoard" class="py-1.5 px-3 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-rose-400 font-medium flex items-center justify-center space-x-1 transition active:scale-95">
+          <i class="fa-solid fa-trash-can text-[11px]"></i><span>盤面をすべて消去</span>
+        </button>
+      </div>
+
+      <!-- メタ情報フォーム -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col space-y-3 text-xs">
+        <div class="grid grid-cols-12 gap-2">
+          <div class="col-span-7 flex flex-col space-y-1">
+            <label class="font-bold text-slate-300">問題タイトル</label>
+            <input type="text" id="inputTitle" placeholder="局面メモ / タイトル" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-amber-500">
+          </div>
+          <div class="col-span-5 flex flex-col space-y-1">
+            <label class="font-bold text-slate-300">出題手数・手番</label>
+            <div class="flex items-center space-x-1">
+              <input type="number" id="inputProblemMoveCount" min="1" value="1" class="w-16 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-slate-100 font-mono text-center font-bold focus:outline-none focus:border-amber-500">
+              <span class="text-slate-400 text-[11px]">手目</span>
+              <select id="inputTurn" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-1.5 py-1.5 text-slate-100 font-bold focus:outline-none focus:border-amber-500 text-center">
+                <option value="B">黒番</option>
+                <option value="W">白番</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-12 gap-2">
+          <div class="col-span-6 flex flex-col space-y-1">
+            <label class="font-bold text-slate-300">カテゴリ / タグ</label>
+            <input type="text" id="inputCategory" placeholder="ヨセ / 定石" value="ヨセ" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-amber-500">
+          </div>
+          <div class="col-span-3 flex flex-col space-y-1">
+            <label class="font-bold text-slate-300">黒アゲハマ</label>
+            <div class="flex items-center space-x-1">
+              <button type="button" class="w-6 h-7 rounded bg-slate-800 border border-slate-700 text-slate-300 font-bold active:scale-95" onclick="stepPrisoner('inputEditorBlackPrisoners', 1)">+</button>
+              <input type="number" id="inputEditorBlackPrisoners" min="0" value="0" class="w-full bg-slate-950 border border-slate-800 rounded px-1 py-1 text-slate-100 font-mono text-center font-bold focus:outline-none">
+              <button type="button" class="w-6 h-7 rounded bg-slate-800 border border-slate-700 text-slate-300 font-bold active:scale-95" onclick="stepPrisoner('inputEditorBlackPrisoners', -1)">-</button>
+            </div>
+          </div>
+          <div class="col-span-3 flex flex-col space-y-1">
+            <label class="font-bold text-slate-300">白アゲハマ</label>
+            <div class="flex items-center space-x-1">
+              <button type="button" class="w-6 h-7 rounded bg-slate-800 border border-slate-700 text-slate-300 font-bold active:scale-95" onclick="stepPrisoner('inputEditorWhitePrisoners', 1)">+</button>
+              <input type="number" id="inputEditorWhitePrisoners" min="0" value="0" class="w-full bg-slate-950 border border-slate-800 rounded px-1 py-1 text-slate-100 font-mono text-center font-bold focus:outline-none">
+              <button type="button" class="w-6 h-7 rounded bg-slate-800 border border-slate-700 text-slate-300 font-bold active:scale-95" onclick="stepPrisoner('inputEditorWhitePrisoners', -1)">-</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 正解候補手（最大5択）の登録エリア -->
+        <div class="flex flex-col space-y-2 pt-1">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-amber-400">正解手・候補手（最大5択）</label>
+            <span class="text-[10px] text-slate-400" id="slotPickerNotice">「盤から指定」を押して盤面タップ</span>
+          </div>
+
+          <div id="correctMovesInputsContainer" class="space-y-2.5">
+            <!-- JavaScriptで5行の個別カードを動的生成 -->
+          </div>
+        </div>
+
+        <!-- 局面全体の総合解説メモ -->
+        <div class="flex flex-col space-y-1">
+          <label class="font-bold text-slate-300">局面全体の解説メモ</label>
+          <textarea id="inputExplanation" rows="2" placeholder="ヨセの背景や目数全体の総括など" class="bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-amber-500 text-xs custom-scrollbar"></textarea>
+        </div>
+
+        <button id="btnSaveProblem" class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold shadow-lg transition active:scale-95 flex items-center justify-center space-x-1.5 mt-2">
+          <i class="fa-solid fa-floppy-disk"></i><span>この内容で問題を保存する</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. 問題一覧 & インポート・エクスポート -->
+    <section id="listSection" class="hidden flex flex-col space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <button id="filterAll" class="px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold">すべて</button>
+          <button id="filterReview" class="px-3 py-1.5 rounded-xl bg-slate-900 text-slate-300 hover:text-white text-xs flex items-center space-x-1 border border-slate-800">
+            <i class="fa-solid fa-star text-amber-400 text-[10px]"></i><span>要復習のみ</span>
+          </button>
+        </div>
+        <span class="text-xs text-slate-400">全 <strong id="listTotalCount" class="text-amber-400">0</strong> 問</span>
+      </div>
+
+      <!-- 問題一覧リスト -->
+      <div id="problemListContainer" class="space-y-2 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+        <!-- JavaScriptで動的生成 -->
+      </div>
+
+      <!-- JSONバックアップ & 復元 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2 text-xs">
+        <span class="font-bold text-slate-300">データのエクスポート / インポート</span>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btnExportJson" class="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold flex items-center justify-center space-x-1 transition">
+            <i class="fa-solid fa-download"></i><span>JSON保存</span>
+          </button>
+          <label class="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold flex items-center justify-center space-x-1 transition cursor-pointer text-center">
+            <i class="fa-solid fa-upload"></i><span>JSON読込</span>
+            <input type="file" id="inputFileJson" accept=".json" class="hidden">
+          </label>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 固定フッターナビゲーション（解くモード用） -->
+  <footer id="solveFixedNav" class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-800 px-3 py-2 z-30 shadow-lg">
+    <div class="max-w-lg mx-auto flex items-center justify-between gap-2">
+      <button id="btnPrevProblem" class="flex-1 py-2 rounded-xl bg-slate-950 border border-slate-800 hover:bg-slate-800 text-xs font-semibold text-slate-300 flex items-center justify-center space-x-1 active:scale-95 transition">
+        <i class="fa-solid fa-chevron-left text-[10px]"></i><span>前の問題</span>
+      </button>
+      <button id="btnRandomProblem" class="py-2 px-3 rounded-xl bg-slate-950 border border-slate-800 hover:bg-slate-800 text-xs font-semibold text-amber-400 flex items-center justify-center space-x-1 active:scale-95 transition" title="ランダム出題">
+        <i class="fa-solid fa-shuffle text-xs"></i>
+      </button>
+      <button id="btnNextProblem" class="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white flex items-center justify-center space-x-1 active:scale-95 shadow transition">
+        <span>次の問題</span><i class="fa-solid fa-chevron-right text-[10px]"></i>
+      </button>
+    </div>
+  </footer>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 text-slate-100 px-4 py-2 rounded-xl text-xs shadow-2xl opacity-0 pointer-events-none transition-all duration-300 z-50 flex items-center space-x-2">
+    <i class="fa-solid fa-circle-info text-amber-400"></i>
+    <span id="toastMessage">通知メッセージ</span>
+  </div>
+
+  <!-- ==================== JavaScript ロジック ==================== -->
+  <script>
+    /* ============================================================
+       1. 基本定数・座標系定義 (9x9)
+       ============================================================ */
+    const BOARD_SIZE = 9;
+    const COLS = ['A','B','C','D','E','F','G','H','J']; // 'I' は囲碁の慣例でスキップ
+    const CELL_SIZE = 40;
+    const PADDING = 45; // 座標ラベル用の余白
+
+    function getX(colIdx) { return PADDING + colIdx * CELL_SIZE; }
+    function getY(rowIdx) { return PADDING + (BOARD_SIZE - 1 - rowIdx) * CELL_SIZE; }
+
+    function parseCoord(coordStr) {
+      if (!coordStr || coordStr.length < 2) return { colIdx: -1, rowIdx: -1 };
+      const colChar = coordStr[0].toUpperCase();
+      const rowNum = parseInt(coordStr.substring(1), 10);
+      const colIdx = COLS.indexOf(colChar);
+      const rowIdx = rowNum - 1;
+      return { colIdx, rowIdx };
+    }
+
+    function toCoord(colIdx, rowIdx) {
+      if (colIdx < 0 || colIdx >= BOARD_SIZE || rowIdx < 0 || rowIdx >= BOARD_SIZE) return null;
+      return `${COLS[colIdx]}${rowIdx + 1}`;
+    }
+
+    /* ============================================================
+       2. Web Audio API 音響効果（外部ファイル不要）
+       ============================================================ */
+    let audioCtx = null;
+    function playStoneSound(isCapture = false, isError = false) {
+      try {
+        if (!audioCtx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) audioCtx = new AudioContext();
+        }
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const now = audioCtx.currentTime;
+
+        if (isError) {
+          // 不正着手音（低音ビープ）
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(70, now + 0.15);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.15);
+          return;
+        }
+
+        // 碁石の心地よい打音（ノック音）
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.05);
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+
+        if (isCapture) {
+          // 石抜き成功時の軽いシャラン音
+          setTimeout(() => {
+            if (!audioCtx) return;
+            const cOsc = audioCtx.createOscillator();
+            const cGain = audioCtx.createGain();
+            const t = audioCtx.currentTime;
+            cOsc.type = 'sine';
+            cOsc.frequency.setValueAtTime(880, t);
+            cOsc.frequency.exponentialRampToValueAtTime(1320, t + 0.1);
+            cGain.gain.setValueAtTime(0.15, t);
+            cGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+            cOsc.connect(cGain);
+            cGain.connect(audioCtx.destination);
+            cOsc.start(t);
+            cOsc.stop(t + 0.1);
+          }, 30);
+        }
+      } catch (e) {
+        // 音声ブロック環境は無視
+      }
+    }
+
+    /* ============================================================
+       3. 厳密な囲碁ルールエンジン（ダメ呼吸点・自動石抜き・自殺手禁止・コウ）
+       ============================================================ */
+    function getNeighbors(colIdx, rowIdx) {
+      const neighbors = [];
+      const deltas = [[1,0], [-1,0], [0,1], [0,-1]];
+      for (const [dc, dr] of deltas) {
+        const nc = colIdx + dc;
+        const nr = rowIdx + dr;
+        if (nc >= 0 && nc < BOARD_SIZE && nr >= 0 && nr < BOARD_SIZE) {
+          neighbors.push({ colIdx: nc, rowIdx: nr, coord: toCoord(nc, nr) });
+        }
+      }
+      return neighbors;
+    }
+
+    // 連（グループ）とその呼吸点（ダメ）を探索
+    function findGroupAndLiberties(board, startCoord) {
+      const color = board[startCoord];
+      if (!color) return { stones: [], liberties: new Set() };
+
+      const stones = [];
+      const liberties = new Set();
+      const visited = new Set();
+      const queue = [startCoord];
+      visited.add(startCoord);
+
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        stones.push(curr);
+        const { colIdx, rowIdx } = parseCoord(curr);
+
+        for (const neighbor of getNeighbors(colIdx, rowIdx)) {
+          const nCoord = neighbor.coord;
+          const nColor = board[nCoord];
+          if (!nColor) {
+            liberties.add(nCoord);
+          } else if (nColor === color && !visited.has(nCoord)) {
+            visited.add(nCoord);
+            queue.push(nCoord);
+          }
+        }
+      }
+
+      return { stones, liberties };
+    }
+
+    // 1手進める（自殺手・コウ判定・アゲハマ計算・呼吸点0の石除去）
+    function playGoMove(board, coord, color, koCoord = null) {
+      if (board[coord]) {
+        return { success: false, reason: 'すでに石が存在します' };
+      }
+      if (coord === koCoord) {
+        return { success: false, reason: 'コウの取り返しは禁止されています' };
+      }
+
+      const oppColor = color === 'B' ? 'W' : 'B';
+      const tempBoard = { ...board, [coord]: color };
+      const { colIdx, rowIdx } = parseCoord(coord);
+      const neighbors = getNeighbors(colIdx, rowIdx);
+
+      // 隣接する相手グループの呼吸点を計算
+      let capturedStones = [];
+      const checkedOppStones = new Set();
+
+      for (const n of neighbors) {
+        if (tempBoard[n.coord] === oppColor && !checkedOppStones.has(n.coord)) {
+          const group = findGroupAndLiberties(tempBoard, n.coord);
+          group.stones.forEach(s => checkedOppStones.add(s));
+          if (group.liberties.size === 0) {
+            capturedStones = capturedStones.concat(group.stones);
+          }
+        }
+      }
+
+      // 相手の石を除去
+      for (const s of capturedStones) {
+        delete tempBoard[s];
+      }
+
+      // 自身グループの呼吸点判定（相手石を取れない自殺手は禁止）
+      const myGroup = findGroupAndLiberties(tempBoard, coord);
+      if (myGroup.liberties.size === 0) {
+        return { success: false, reason: '自殺手（着手禁止点）です' };
+      }
+
+      // コウ（1子抜きの取り返し）の判定
+      let newKo = null;
+      if (capturedStones.length === 1 && myGroup.stones.length === 1 && myGroup.liberties.size === 1) {
+        newKo = capturedStones[0];
+      }
+
+      return {
+        success: true,
+        newBoard: tempBoard,
+        capturedCount: capturedStones.length,
+        capturedStones,
+        newKo
+      };
+    }
+
+    /* ============================================================
+       4. デフォルト問題データ & ストレージ管理
+       ============================================================ */
+    const DEFAULT_PROBLEMS = [
+      {
+        id: "prob_demo_1",
+        title: "右辺の急所バエ",
+        category: "ヨセ・手筋",
+        moveCount: 45,
+        turn: "B",
+        initialBlackPrisoners: 1,
+        initialWhitePrisoners: 0,
+        stones: {
+          "C7": "W", "D7": "W", "E7": "W", "F7": "W",
+          "C6": "B", "D6": "B", "E6": "B", "F6": "W",
+          "C5": "B", "D5": "B", "E5": "B", "F5": "W", "G5": "W",
+          "F4": "B", "G4": "B", "H4": "B", "F3": "B"
+        },
+        solutions: [
+          {
+            coord: "G6",
+            label: "最善手",
+            scoreLead: 1.5,
+            annotation: "白のダメ詰まりを咎める最強手。白2子を抜き上げる確定ルートに入り黒+1.5目勝ち。"
+          },
+          {
+            coord: "H5",
+            label: "次善手",
+            scoreLead: 0.5,
+            annotation: "外側を確実に押さえる手。黒0.5目勝ちで手堅いですが、G6に比べるとやや白に余地を与えます。"
+          }
+        ],
+        explanation: "相手の呼吸点が詰まっている時は、単に受けるだけでなく直接ダメを詰めるハネ（G6）が成立します。",
+        review: true
+      },
+      {
+        id: "prob_demo_2",
+        title: "左下のハネツギ",
+        category: "ヨセ",
+        moveCount: 52,
+        turn: "W",
+        initialBlackPrisoners: 0,
+        initialWhitePrisoners: 1,
+        stones: {
+          "C4": "B", "D4": "B", "E4": "B",
+          "C3": "W", "D3": "W", "E3": "B",
+          "D2": "W", "E2": "B",
+          "B3": "B", "B4": "B"
+        },
+        solutions: [
+          {
+            coord: "C2",
+            label: "最善手",
+            scoreLead: -0.5,
+            annotation: "先手で1目を稼ぎつつ白のダメを広げる絶対のヨセ。打たないと2目損で逆転。"
+          },
+          {
+            coord: "B2",
+            label: "変化図",
+            scoreLead: -1.5,
+            annotation: "隅の地を囲うサガリ。有力ですが後手を引くため差を詰められます。"
+          }
+        ],
+        explanation: "1目単位を争う9路のヨセでは、先手ハネツギ（C2）を逃さないことが勝着になります。",
+        review: false
+      }
+    ];
+
+    let problems = [];
+    let currentProblemIndex = 0;
+    let currentMode = 'solve';
+    let currentFilter = 'all';
+
+    // 解くモード用状態
+    let currentSolveBoard = {};
+    let solveCurrentTurn = 'B';
+    let solveCurrentMoveCount = 1;
+    let solveBlackPrisoners = 0;
+    let solveWhitePrisoners = 0;
+    let solveKoCoord = null;
+    let solveHistory = [];
+    let solveFirstMoveAnswered = false;
+
+    // 作成モード用状態
+    let editorBoard = {};
+    let editorTurn = 'B';
+    let editorMoveCount = 1;
+    let editorHistory = [];
+    let editorKoCoord = null;
+    let activePickingSlot = null;
+
+    // アゲハマ用ステッパー
+    window.stepPrisoner = function(inputId, delta) {
+      const el = document.getElementById(inputId);
+      let v = parseInt(el.value, 10) || 0;
+      v = Math.max(0, v + delta);
+      el.value = v;
+      syncTurnWithMoveCount();
+    };
+
+    // 目数差用ステッパー（+/- 0.5, +/- 1.0）
+    window.stepScoreLead = function(slotIdx, delta) {
+      const el = document.getElementById(`slotScoreLead_${slotIdx}`);
+      if (!el) return;
+      let v = parseFloat(el.value);
+      if (isNaN(v)) v = 0.0;
+      v = Math.round((v + delta) * 10) / 10;
+      el.value = (v > 0 ? '+' : '') + v.toFixed(1);
+    };
+
+    function formatScoreLead(val) {
+      const n = parseFloat(val);
+      if (isNaN(n) || n === 0) return '±0.0目';
+      return (n > 0 ? `黒 +${n.toFixed(1)}目` : `白 +${Math.abs(n).toFixed(1)}目`);
+    }
+
+    function loadProblems() {
+      const saved = localStorage.getItem('KATAGO_9X9_PROBLEMS');
+      if (saved) {
+        try {
+          problems = JSON.parse(saved);
+        } catch (e) {
+          problems = DEFAULT_PROBLEMS;
+        }
+      } else {
+        problems = DEFAULT_PROBLEMS;
+      }
+    }
+
+    function saveProblems() {
+      localStorage.setItem('KATAGO_9X9_PROBLEMS', JSON.stringify(problems));
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMessage').textContent = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2400);
+    }
+
+    /* ============================================================
+       5. 碁盤 SVG 描画エンジン
+       ============================================================ */
+    function renderBoard(svgEl, boardStones, options = {}) {
+      const {
+        onCellClick = null,
+        lastMoveCoord = null,
+        highlightSolutions = [],
+        activeTurn = null
+      } = options;
+
+      while (svgEl.firstChild) {
+        svgEl.removeChild(svgEl.firstChild);
+      }
+
+      // 1. グリッド線（線・星を描画）
+      const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        // 横線
+        const lineH = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        lineH.setAttribute('x1', getX(0));
+        lineH.setAttribute('y1', getY(i));
+        lineH.setAttribute('x2', getX(BOARD_SIZE - 1));
+        lineH.setAttribute('y2', getY(i));
+        lineH.setAttribute('stroke', '#452205');
+        lineH.setAttribute('stroke-width', '1.5');
+        lineH.setAttribute('stroke-linecap', 'round');
+        gridGroup.appendChild(lineH);
+
+        // 縦線
+        const lineV = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        lineV.setAttribute('x1', getX(i));
+        lineV.setAttribute('y1', getY(0));
+        lineV.setAttribute('x2', getX(i));
+        lineV.setAttribute('y2', getY(BOARD_SIZE - 1));
+        lineV.setAttribute('stroke', '#452205');
+        lineV.setAttribute('stroke-width', '1.5');
+        lineV.setAttribute('stroke-linecap', 'round');
+        gridGroup.appendChild(lineV);
+      }
+
+      // 星（天元 5-5、隅 3-3, 3-7, 7-3, 7-7）
+      const starPoints = [
+        { c: 2, r: 2 }, { c: 6, r: 2 },
+        { c: 4, r: 4 },
+        { c: 2, r: 6 }, { c: 6, r: 6 }
+      ];
+      starPoints.forEach(p => {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', getX(p.c));
+        circle.setAttribute('cy', getY(p.r));
+        circle.setAttribute('r', '3.5');
+        circle.setAttribute('fill', '#452205');
+        gridGroup.appendChild(circle);
+      });
+
+      // 座標ラベル（A-J, 1-9）
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        // 列 (A-J)
+        const labelCol = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        labelCol.setAttribute('x', getX(i));
+        labelCol.setAttribute('y', 25);
+        labelCol.setAttribute('text-anchor', 'middle');
+        labelCol.setAttribute('font-family', 'monospace');
+        labelCol.setAttribute('font-size', '13');
+        labelCol.setAttribute('font-weight', 'bold');
+        labelCol.setAttribute('fill', '#5e3208');
+        labelCol.textContent = COLS[i];
+        gridGroup.appendChild(labelCol);
+
+        // 行 (1-9)
+        const labelRow = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        labelRow.setAttribute('x', 24);
+        labelRow.setAttribute('y', getY(i) + 4);
+        labelRow.setAttribute('text-anchor', 'middle');
+        labelRow.setAttribute('font-family', 'monospace');
+        labelRow.setAttribute('font-size', '13');
+        labelRow.setAttribute('font-weight', 'bold');
+        labelRow.setAttribute('fill', '#5e3208');
+        labelRow.textContent = (i + 1).toString();
+        gridGroup.appendChild(labelRow);
+      }
+
+      svgEl.appendChild(gridGroup);
+
+      // 2. 碁石の描画
+      const stonesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+      for (const [coord, color] of Object.entries(boardStones)) {
+        const { colIdx, rowIdx } = parseCoord(coord);
+        if (colIdx < 0 || rowIdx < 0) continue;
+
+        const cx = getX(colIdx);
+        const cy = getY(rowIdx);
+        const r = 17.5;
+
+        const stoneG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+        // 石の影
+        const shadow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        shadow.setAttribute('cx', cx + 1.8);
+        shadow.setAttribute('cy', cy + 2.5);
+        shadow.setAttribute('r', r);
+        shadow.setAttribute('fill', 'rgba(0,0,0,0.3)');
+        stoneG.appendChild(shadow);
+
+        // 石本体（グラデーション感のあるリアルな陰影）
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', cx);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', r);
+
+        if (color === 'B') {
+          circle.setAttribute('fill', '#111827');
+          circle.setAttribute('stroke', '#030712');
+          circle.setAttribute('stroke-width', '1');
+        } else {
+          circle.setAttribute('fill', '#f8fafc');
+          circle.setAttribute('stroke', '#cbd5e1');
+          circle.setAttribute('stroke-width', '1');
+        }
+        stoneG.appendChild(circle);
+
+        // 光沢ハイライト
+        const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        highlight.setAttribute('cx', cx - 4.5);
+        highlight.setAttribute('cy', cy - 4.5);
+        highlight.setAttribute('r', r * 0.35);
+        highlight.setAttribute('fill', color === 'B' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.7)');
+        stoneG.appendChild(highlight);
+
+        // 直前の着手点マーカー
+        if (coord === lastMoveCoord) {
+          const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          marker.setAttribute('cx', cx);
+          marker.setAttribute('cy', cy);
+          marker.setAttribute('r', '5.5');
+          marker.setAttribute('fill', color === 'B' ? '#ef4444' : '#dc2626');
+          stoneG.appendChild(marker);
+        }
+
+        stonesGroup.appendChild(stoneG);
+      }
+      svgEl.appendChild(stonesGroup);
+
+      // 3. 正解手ハイライト（解答表示時）
+      if (highlightSolutions && highlightSolutions.length > 0) {
+        const solGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        highlightSolutions.forEach((sol, idx) => {
+          const { colIdx, rowIdx } = parseCoord(sol.coord);
+          if (colIdx < 0 || rowIdx < 0) return;
+          const cx = getX(colIdx);
+          const cy = getY(rowIdx);
+
+          const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          ring.setAttribute('cx', cx);
+          ring.setAttribute('cy', cy);
+          ring.setAttribute('r', '17');
+          ring.setAttribute('fill', 'rgba(16, 185, 129, 0.35)');
+          ring.setAttribute('stroke', '#10b981');
+          ring.setAttribute('stroke-width', '2.5');
+          solGroup.appendChild(ring);
+
+          const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          txt.setAttribute('x', cx);
+          txt.setAttribute('y', cy + 4);
+          txt.setAttribute('text-anchor', 'middle');
+          txt.setAttribute('font-family', 'sans-serif');
+          txt.setAttribute('font-size', '11');
+          txt.setAttribute('font-weight', 'bold');
+          txt.setAttribute('fill', '#ffffff');
+          txt.textContent = (idx + 1).toString();
+          solGroup.appendChild(txt);
+        });
+        svgEl.appendChild(solGroup);
+      }
+
+      // 4. 透明なタッチ・クリック検出レイヤー
+      const hitGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          const coord = toCoord(c, r);
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('x', getX(c) - CELL_SIZE / 2);
+          rect.setAttribute('y', getY(r) - CELL_SIZE / 2);
+          rect.setAttribute('width', CELL_SIZE);
+          rect.setAttribute('height', CELL_SIZE);
+          rect.setAttribute('fill', 'transparent');
+          rect.setAttribute('cursor', 'pointer');
+
+          rect.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (onCellClick) onCellClick(coord);
+          });
+
+          hitGroup.appendChild(rect);
+        }
+      }
+      svgEl.appendChild(hitGroup);
+    }
+
+    /* ============================================================
+       6. 解くモードの制御
+       ============================================================ */
+    function renderCurrentSolveProblem() {
+      if (problems.length === 0) {
+        showToast('問題がありません。「作成」から追加してください');
+        return;
+      }
+      const p = problems[currentProblemIndex];
+
+      document.getElementById('solveProblemIndex').textContent = `#${currentProblemIndex + 1}`;
+      document.getElementById('solveProblemTitle').textContent = p.title || '無題の問題';
+      document.getElementById('solveCategoryBadge').textContent = p.category || 'ヨセ';
+
+      updateReviewIcon(p.review);
+
+      // 局面状態の初期化
+      currentSolveBoard = { ...p.stones };
+      solveCurrentMoveCount = p.moveCount || 1;
+      solveCurrentTurn = p.turn || (solveCurrentMoveCount % 2 === 1 ? 'B' : 'W');
+      solveBlackPrisoners = p.initialBlackPrisoners || 0;
+      solveWhitePrisoners = p.initialWhitePrisoners || 0;
+      solveKoCoord = null;
+      solveHistory = [];
+      solveFirstMoveAnswered = false;
+
+      // UI表示のリセット
+      document.getElementById('feedbackInitial').classList.remove('hidden');
+      document.getElementById('feedbackResult').classList.add('hidden');
+      document.getElementById('explanationBox').classList.add('hidden');
+      document.getElementById('btnRetry').classList.add('hidden');
+
+      updateSolveTurnUI();
+      updateAgehamaUI();
+      renderSolveBoardUI();
+    }
+
+    function updateSolveTurnUI() {
+      const dot = document.getElementById('solveTurnDot');
+      const text = document.getElementById('solveTurnText');
+      const countEl = document.getElementById('solveMoveCount');
+
+      countEl.textContent = `${solveCurrentMoveCount}手目`;
+
+      if (solveCurrentTurn === 'B') {
+        dot.className = 'w-3.5 h-3.5 rounded-full bg-black border border-slate-600 shadow-inner';
+        text.textContent = '黒番';
+      } else {
+        dot.className = 'w-3.5 h-3.5 rounded-full bg-white border border-slate-400 shadow-inner';
+        text.textContent = '白番';
+      }
+    }
+
+    function updateAgehamaUI() {
+      document.getElementById('agehamaBlack').textContent = solveBlackPrisoners;
+      document.getElementById('agehamaWhite').textContent = solveWhitePrisoners;
+    }
+
+    function renderSolveBoardUI(lastCoord = null) {
+      const p = problems[currentProblemIndex];
+      const svg = document.getElementById('solveGobanSvg');
+
+      const highlight = solveFirstMoveAnswered ? p.solutions : [];
+
+      renderBoard(svg, currentSolveBoard, {
+        onCellClick: handleSolveCellClick,
+        lastMoveCoord: lastCoord,
+        highlightSolutions: highlight,
+        activeTurn: solveCurrentTurn
+      });
+    }
+
+    function handleSolveCellClick(coord) {
+      const p = problems[currentProblemIndex];
+
+      // 1. 初手（問題の解答判定）
+      if (!solveFirstMoveAnswered) {
+        const testResult = playGoMove(currentSolveBoard, coord, solveCurrentTurn, solveKoCoord);
+        if (!testResult.success) {
+          playStoneSound(false, true);
+          showToast(testResult.reason);
+          return;
+        }
+
+        solveHistory.push({
+          board: { ...currentSolveBoard },
+          turn: solveCurrentTurn,
+          moveCount: solveCurrentMoveCount,
+          blackPrisoners: solveBlackPrisoners,
+          whitePrisoners: solveWhitePrisoners,
+          ko: solveKoCoord,
+          wasFirstMove: false,
+          lastCoord: null
+        });
+
+        currentSolveBoard = testResult.newBoard;
+        solveKoCoord = testResult.newKo;
+        const isCapture = testResult.capturedCount > 0;
+
+        if (solveCurrentTurn === 'B') {
+          solveBlackPrisoners += testResult.capturedCount;
+        } else {
+          solveWhitePrisoners += testResult.capturedCount;
+        }
+
+        solveFirstMoveAnswered = true;
+        evaluateFirstMove(coord, p);
+        playStoneSound(isCapture, false);
+
+        // 手番と手数の進捗
+        solveCurrentTurn = solveCurrentTurn === 'B' ? 'W' : 'B';
+        solveCurrentMoveCount++;
+        updateSolveTurnUI();
+        updateAgehamaUI();
+        renderSolveBoardUI(coord);
+        return;
+      }
+
+      // 2. 解答後の自由な着手
+      const result = playGoMove(currentSolveBoard, coord, solveCurrentTurn, solveKoCoord);
+      if (!result.success) {
+        playStoneSound(false, true);
+        showToast(result.reason);
+        return;
+      }
+
+      solveHistory.push({
+        board: { ...currentSolveBoard },
+        turn: solveCurrentTurn,
+        moveCount: solveCurrentMoveCount,
+        blackPrisoners: solveBlackPrisoners,
+        whitePrisoners: solveWhitePrisoners,
+        ko: solveKoCoord,
+        wasFirstMove: true,
+        lastCoord: coord
+      });
+
+      currentSolveBoard = result.newBoard;
+      solveKoCoord = result.newKo;
+      const isCapture = result.capturedCount > 0;
+
+      if (solveCurrentTurn === 'B') {
+        solveBlackPrisoners += result.capturedCount;
+      } else {
+        solveWhitePrisoners += result.capturedCount;
+      }
+
+      playStoneSound(isCapture, false);
+      solveCurrentTurn = solveCurrentTurn === 'B' ? 'W' : 'B';
+      solveCurrentMoveCount++;
+      updateSolveTurnUI();
+      updateAgehamaUI();
+      renderSolveBoardUI(coord);
+    }
+
+    /* ============================================================
+       7. 解答判定 & 複数注釈の比較表示
+       ============================================================ */
+    function evaluateFirstMove(coord, p) {
+      const solutions = p.solutions || [];
+      const matched = solutions.find(s => s.coord.toUpperCase() === coord.toUpperCase());
+      const isCorrect = Boolean(matched);
+
+      document.getElementById('feedbackInitial').classList.add('hidden');
+      const resultBox = document.getElementById('feedbackResult');
+      const icon = document.getElementById('feedbackIcon');
+      const title = document.getElementById('feedbackTitle');
+      const coordText = document.getElementById('feedbackCoord');
+      const selectedBox = document.getElementById('selectedMoveAnnotationBox');
+      const selectedLabel = document.getElementById('selectedMoveLabel');
+      const selectedLeadBadge = document.getElementById('selectedMoveLeadBadge');
+      const selectedText = document.getElementById('selectedMoveAnnotationText');
+      const explBox = document.getElementById('explanationBox');
+      const explText = document.getElementById('explanationText');
+      const quickNextBtn = document.getElementById('btnQuickNext');
+      const retryBtn = document.getElementById('btnRetry');
+
+      resultBox.classList.remove('hidden');
+
+      if (isCorrect) {
+        icon.className = 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+        title.className = 'font-bold text-xs text-emerald-400';
+        title.textContent = `正解！ (${matched.label || '正解手'})`;
+        coordText.textContent = `着手: ${coord}`;
+
+        selectedLabel.textContent = matched.label || '正解手';
+        selectedLeadBadge.textContent = formatScoreLead(matched.scoreLead);
+        selectedText.textContent = matched.annotation || '（個別コメントなし）';
+        selectedBox.classList.remove('hidden');
+        quickNextBtn.classList.remove('hidden');
+        retryBtn.classList.add('hidden');
+      } else {
+        icon.className = 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow bg-rose-500/20 text-rose-400 border border-rose-500/30';
+        icon.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        title.className = 'font-bold text-xs text-rose-400';
+        title.textContent = '不正解';
+        coordText.textContent = `着手: ${coord}`;
+
+        p.review = true;
+        saveProblems();
+        updateReviewIcon(true);
+
+        selectedBox.classList.add('hidden');
+        quickNextBtn.classList.add('hidden');
+        retryBtn.classList.remove('hidden');
+      }
+
+      // 全正解手の比較リストを生成
+      const allListContainer = document.getElementById('allAnswersList');
+      allListContainer.innerHTML = '';
+      solutions.forEach((sol, idx) => {
+        const item = document.createElement('div');
+        const isCurrentPick = sol.coord.toUpperCase() === coord.toUpperCase();
+        item.className = `p-2 rounded-lg border text-[11px] ${
+          isCurrentPick
+            ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-200 shadow-sm'
+            : 'bg-slate-950 border-slate-800 text-slate-300'
+        }`;
+        item.innerHTML = `
+          <div class="flex items-center justify-between font-bold mb-1">
+            <span class="flex items-center space-x-1.5">
+              <span class="font-mono text-amber-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">${sol.coord}</span>
+              <span>${sol.label || `正解 ${idx + 1}`}</span>
+            </span>
+            <div class="flex items-center space-x-1.5">
+              <span class="font-mono text-[10px] text-amber-300 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-800/60">${formatScoreLead(sol.scoreLead)}</span>
+              ${isCurrentPick ? '<span class="text-[9px] bg-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded font-bold">着手</span>' : ''}
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-400 leading-relaxed whitespace-pre-wrap pl-1 border-l-2 border-slate-700">${sol.annotation || 'コメントなし'}</div>
+        `;
+        allListContainer.appendChild(item);
+      });
+
+      explText.textContent = p.explanation || '（局面解説なし）';
+      explBox.classList.remove('hidden');
+    }
+
+    /* ============================================================
+       8. 作成モードの制御（手数と手番の厳密連動・ステッパー・個別枠）
+       ============================================================ */
+    function syncTurnWithMoveCount() {
+      // 盤面の石数から手数と手番を算出
+      let stoneCount = Object.keys(editorBoard).length;
+      const bPris = parseInt(document.getElementById('inputEditorBlackPrisoners').value, 10) || 0;
+      const wPris = parseInt(document.getElementById('inputEditorWhitePrisoners').value, 10) || 0;
+      
+      // 総着手手数 = 残存石 + アゲハマ合計
+      const calculatedMoveCount = Math.max(1, stoneCount + bPris + wPris + 1);
+      editorMoveCount = calculatedMoveCount;
+
+      document.getElementById('editorMoveCountDisplay').textContent = `${editorMoveCount - 1}手完了 (${editorMoveCount}手目)`;
+      document.getElementById('inputProblemMoveCount').value = editorMoveCount;
+
+      // 奇数手=黒番、偶数手=白番
+      editorTurn = (editorMoveCount % 2 === 1) ? 'B' : 'W';
+      document.getElementById('inputTurn').value = editorTurn;
+      updateEditorTurnBadge();
+    }
+
+    function initCreateMode(editProblemId = null) {
+      activePickingSlot = null;
+      const slotContainer = document.getElementById('correctMovesInputsContainer');
+      slotContainer.innerHTML = '';
+
+      let targetProblem = null;
+      if (editProblemId) {
+        targetProblem = problems.find(p => p.id === editProblemId);
+      }
+
+      // 最大5択の独立カードUI
+      for (let i = 0; i < 5; i++) {
+        const sol = (targetProblem && targetProblem.solutions && targetProblem.solutions[i]) ? targetProblem.solutions[i] : null;
+        const initialLead = sol && sol.scoreLead !== undefined ? sol.scoreLead : (i === 0 ? 0.0 : 0.0);
+        const initialLeadStr = (initialLead > 0 ? '+' : '') + initialLead.toFixed(1);
+
+        const card = document.createElement('div');
+        card.className = 'bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs flex flex-col space-y-2';
+        card.innerHTML = `
+          <!-- 上段: 座標・評価ラベル・目数差ステッパー -->
+          <div class="flex flex-wrap items-center justify-between gap-1.5 pb-1.5 border-b border-slate-800/80">
+            <div class="flex items-center space-x-1.5">
+              <span class="w-5 h-5 rounded-full bg-amber-950/80 border border-amber-800/80 text-amber-400 font-mono font-bold text-center leading-5 text-[11px]">${i + 1}</span>
+              <input type="text" id="slotCoord_${i}" placeholder="座標" value="${sol ? sol.coord : ''}" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-center font-mono font-bold uppercase text-slate-100 focus:outline-none focus:border-amber-500 text-xs">
+              <button type="button" class="btn-pick-coord px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-medium" data-slot="${i}" title="盤面タップでこの座標を指定">
+                <i class="fa-solid fa-crosshairs mr-1"></i>盤から指定
+              </button>
+            </div>
+
+            <div class="flex items-center space-x-1">
+              <input type="text" id="slotLabel_${i}" placeholder="評価名" value="${sol ? sol.label : (i === 0 ? '最善手' : (i === 1 ? '次善手' : '変化図'))}" class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs text-center focus:outline-none focus:border-amber-500">
+            </div>
+          </div>
+
+          <!-- 中段: スマホ向け目数差ステッパー -->
+          <div class="flex items-center justify-between bg-slate-900/60 p-1.5 rounded-lg border border-slate-800 text-[11px]">
+            <span class="text-slate-400 font-medium">目数差:</span>
+            <div class="flex items-center space-x-1">
+              <button type="button" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-mono active:scale-95" onclick="stepScoreLead(${i}, 1.0)">+1.0</button>
+              <button type="button" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-mono active:scale-95" onclick="stepScoreLead(${i}, 0.5)">+0.5</button>
+              
+              <input type="text" id="slotScoreLead_${i}" value="${initialLeadStr}" class="w-16 bg-slate-950 border border-slate-700 rounded py-0.5 text-center font-mono font-bold text-amber-400 text-xs focus:outline-none">
+
+              <button type="button" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-mono active:scale-95" onclick="stepScoreLead(${i}, -0.5)">-0.5</button>
+              <button type="button" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-mono active:scale-95" onclick="stepScoreLead(${i}, -1.0)">-1.0</button>
+            </div>
+          </div>
+
+          <!-- 下段: その手に対する専用コメント枠 -->
+          <div class="flex flex-col space-y-1">
+            <textarea id="slotAnnotation_${i}" rows="2" placeholder="この手に対する解説・変化メモ（例: 先手ハネツギで1目得。白が受けなければ抜きが発生など）" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-300 text-xs focus:outline-none focus:border-amber-500 custom-scrollbar leading-relaxed">${sol ? (sol.annotation || '') : ''}</textarea>
+          </div>
+        `;
+        slotContainer.appendChild(card);
+      }
+
+      // 座標ピッカーボタンのイベントリスナー
+      slotContainer.querySelectorAll('.btn-pick-coord').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const slotIdx = parseInt(btn.dataset.slot, 10);
+          if (activePickingSlot === slotIdx) {
+            activePickingSlot = null;
+            btn.classList.remove('bg-amber-600', 'text-white');
+            btn.classList.add('bg-slate-800', 'text-slate-300');
+            document.getElementById('slotPickerNotice').textContent = '「盤から指定」を押して盤面タップ';
+          } else {
+            slotContainer.querySelectorAll('.btn-pick-coord').forEach(b => {
+              b.classList.remove('bg-amber-600', 'text-white');
+              b.classList.add('bg-slate-800', 'text-slate-300');
+            });
+            activePickingSlot = slotIdx;
+            btn.classList.remove('bg-slate-800', 'text-slate-300');
+            btn.classList.add('bg-amber-600', 'text-white');
+            document.getElementById('slotPickerNotice').textContent = `スロット ${slotIdx + 1} の正解手を盤面でタップ`;
+          }
+        });
+      });
+
+      if (targetProblem) {
+        document.getElementById('inputTitle').value = targetProblem.title || '';
+        document.getElementById('inputCategory').value = targetProblem.category || 'ヨセ';
+        document.getElementById('inputProblemMoveCount').value = targetProblem.moveCount || 1;
+        document.getElementById('inputTurn').value = targetProblem.turn || 'B';
+        document.getElementById('inputExplanation').value = targetProblem.explanation || '';
+        document.getElementById('inputEditorBlackPrisoners').value = targetProblem.initialBlackPrisoners || 0;
+        document.getElementById('inputEditorWhitePrisoners').value = targetProblem.initialWhitePrisoners || 0;
+        editorBoard = { ...targetProblem.stones };
+        editorMoveCount = targetProblem.moveCount || 1;
+        editorTurn = targetProblem.turn || 'B';
+        document.getElementById('editorMoveCountDisplay').textContent = `${editorMoveCount}手目`;
+      } else {
+        document.getElementById('inputTitle').value = '';
+        document.getElementById('inputCategory').value = 'ヨセ';
+        document.getElementById('inputExplanation').value = '';
+        document.getElementById('inputEditorBlackPrisoners').value = 0;
+        document.getElementById('inputEditorWhitePrisoners').value = 0;
+        editorBoard = {};
+        syncTurnWithMoveCount();
+      }
+
+      editorHistory = [];
+      editorKoCoord = null;
+      updateEditorTurnBadge();
+      renderEditorBoardUI();
+    }
+
+    function updateEditorTurnBadge() {
+      const badge = document.getElementById('btnToggleEditorTurn');
+      if (editorTurn === 'B') {
+        badge.className = 'text-[11px] font-bold px-2 py-0.5 rounded bg-black text-white border border-slate-700 active:scale-95 transition';
+        badge.textContent = '黒番';
+      } else {
+        badge.className = 'text-[11px] font-bold px-2 py-0.5 rounded bg-white text-slate-900 border border-slate-300 active:scale-95 transition';
+        badge.textContent = '白番';
+      }
+    }
+
+    function renderEditorBoardUI(lastCoord = null) {
+      const svg = document.getElementById('editorGobanSvg');
+      renderBoard(svg, editorBoard, {
+        onCellClick: handleEditorCellClick,
+        lastMoveCoord: lastCoord
+      });
+    }
+
+    function handleEditorCellClick(coord) {
+      // 1. 正解手ピッカーが有効な場合は座標代入のみ
+      if (activePickingSlot !== null) {
+        const inputCoord = document.getElementById(`slotCoord_${activePickingSlot}`);
+        if (inputCoord) {
+          inputCoord.value = coord;
+          showToast(`正解手 ${activePickingSlot + 1} に ${coord} を設定`);
+        }
+        const btn = document.querySelector(`.btn-pick-coord[data-slot="${activePickingSlot}"]`);
+        if (btn) {
+          btn.classList.remove('bg-amber-600', 'text-white');
+          btn.classList.add('bg-slate-800', 'text-slate-300');
+        }
+        activePickingSlot = null;
+        document.getElementById('slotPickerNotice').textContent = '「盤から指定」を押して盤面タップ';
+        return;
+      }
+
+      // 2. 既存の石タップで削除
+      if (editorBoard[coord]) {
+        editorHistory.push({
+          board: { ...editorBoard },
+          turn: editorTurn,
+          moveCount: editorMoveCount,
+          blackPrisoners: parseInt(document.getElementById('inputEditorBlackPrisoners').value, 10) || 0,
+          whitePrisoners: parseInt(document.getElementById('inputEditorWhitePrisoners').value, 10) || 0,
+          ko: editorKoCoord
+        });
+        delete editorBoard[coord];
+        playStoneSound(true, false);
+        syncTurnWithMoveCount();
+        renderEditorBoardUI();
+        return;
+      }
+
+      // 3. ルールに沿った着手
+      const result = playGoMove(editorBoard, coord, editorTurn, editorKoCoord);
+      if (!result.success) {
+        playStoneSound(false, true);
+        showToast(result.reason);
+        return;
+      }
+
+      const bpInput = document.getElementById('inputEditorBlackPrisoners');
+      const wpInput = document.getElementById('inputEditorWhitePrisoners');
+      let currBp = parseInt(bpInput.value, 10) || 0;
+      let currWp = parseInt(wpInput.value, 10) || 0;
+
+      editorHistory.push({
+        board: { ...editorBoard },
+        turn: editorTurn,
+        moveCount: editorMoveCount,
+        blackPrisoners: currBp,
+        whitePrisoners: currWp,
+        ko: editorKoCoord
+      });
+
+      editorBoard = result.newBoard;
+      editorKoCoord = result.newKo;
+      const isCapture = result.capturedCount > 0;
+
+      if (editorTurn === 'B') {
+        currBp += result.capturedCount;
+        bpInput.value = currBp;
+      } else {
+        currWp += result.capturedCount;
+        wpInput.value = currWp;
+      }
+
+      playStoneSound(isCapture, false);
+      syncTurnWithMoveCount();
+      renderEditorBoardUI(coord);
+    }
+
+    /* ============================================================
+       9. 一覧・フィルタ・JSONエクスポート
+       ============================================================ */
+    function renderProblemList() {
+      const container = document.getElementById('problemListContainer');
+      container.innerHTML = '';
+      document.getElementById('listTotalCount').textContent = problems.length;
+
+      const filtered = problems.filter(p => {
+        if (currentFilter === 'review') return p.review;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-500 text-xs">該当する問題がありません</div>`;
+        return;
+      }
+
+      filtered.forEach((p) => {
+        const actualIndex = problems.findIndex(item => item.id === p.id);
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2 shadow-sm';
+
+        const solutions = p.solutions || [];
+        const solCoords = solutions.map(s => `${s.coord}(${s.scoreLead !== undefined ? (s.scoreLead > 0 ? '+' : '') + s.scoreLead : '±0'})`).join(', ');
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="font-mono text-xs font-bold text-amber-400">#${actualIndex + 1}</span>
+              <span class="text-xs font-bold text-slate-200">${p.title || '無題の問題'}</span>
+              ${p.review ? '<span class="text-amber-400 text-xs"><i class="fa-solid fa-star"></i></span>' : ''}
+            </div>
+            <div class="flex items-center space-x-1">
+              <span class="text-[10px] text-slate-400 font-mono font-bold">${p.moveCount || 1}手目</span>
+              <span class="text-[10px] px-2 py-0.5 rounded ${p.turn === 'B' ? 'bg-black text-white border border-slate-700' : 'bg-white text-slate-900'} font-bold">
+                ${p.turn === 'B' ? '黒番' : '白番'}
+              </span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>カテゴリ: <strong class="text-slate-300">${p.category || '-'}</strong></span>
+            <span>アゲハマ: 黒${p.initialBlackPrisoners || 0} / 白${p.initialWhitePrisoners || 0}</span>
+          </div>
+          <div class="text-[11px] text-emerald-400 font-mono">
+            正解(${solutions.length}): <span class="text-slate-300 font-bold">${solCoords || '未設定'}</span>
+          </div>
+          <div class="flex justify-end space-x-2 pt-1 border-t border-slate-800">
+            <button class="btn-play-item px-2.5 py-1 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold transition" data-idx="${actualIndex}">
+              <i class="fa-solid fa-play mr-1"></i>解く
+            </button>
+            <button class="btn-edit-item px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition" data-id="${p.id}">
+              <i class="fa-solid fa-pen mr-1"></i>編集
+            </button>
+            <button class="btn-delete-item px-2.5 py-1 text-xs rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-800/40 text-rose-300 transition" data-id="${p.id}">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // イベントリスナーの割り当て
+      container.querySelectorAll('.btn-play-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentProblemIndex = parseInt(btn.dataset.idx, 10);
+          switchMode('solve');
+        });
+      });
+
+      container.querySelectorAll('.btn-edit-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          switchMode('create', btn.dataset.id);
+        });
+      });
+
+      container.querySelectorAll('.btn-delete-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pid = btn.dataset.id;
+          problems = problems.filter(item => item.id !== pid);
+          if (currentProblemIndex >= problems.length) currentProblemIndex = Math.max(0, problems.length - 1);
+          saveProblems();
+          renderProblemList();
+          showToast('問題を削除しました');
+        });
+      });
+    }
+
+    function updateReviewIcon(isReview) {
+      const icon = document.getElementById('reviewIcon');
+      if (isReview) {
+        icon.className = 'fa-solid fa-star text-amber-400';
+      } else {
+        icon.className = 'fa-regular fa-star text-slate-400';
+      }
+    }
+
+    /* ============================================================
+       10. モード切り替え & 初期化
+       ============================================================ */
+    function switchMode(mode, editProblemId = null) {
+      currentMode = mode;
+      const navSolve = document.getElementById('navSolve');
+      const navCreate = document.getElementById('navCreate');
+      const navList = document.getElementById('navList');
+
+      const secSolve = document.getElementById('solveSection');
+      const secCreate = document.getElementById('createSection');
+      const secList = document.getElementById('listSection');
+      const solveFixedNav = document.getElementById('solveFixedNav');
+
+      [navSolve, navCreate, navList].forEach(btn => {
+        btn.className = 'px-3 py-1 rounded-lg transition-all flex items-center space-x-1 text-slate-400 hover:text-slate-200 font-semibold';
+      });
+
+      secSolve.classList.add('hidden');
+      secCreate.classList.add('hidden');
+      secList.classList.add('hidden');
+      solveFixedNav.classList.add('hidden');
+
+      if (mode === 'solve') {
+        navSolve.className = 'px-3 py-1 rounded-lg transition-all flex items-center space-x-1 bg-amber-600 text-white shadow font-semibold';
+        secSolve.classList.remove('hidden');
+        solveFixedNav.classList.remove('hidden');
+        renderCurrentSolveProblem();
+      } else if (mode === 'create') {
+        navCreate.className = 'px-3 py-1 rounded-lg transition-all flex items-center space-x-1 bg-amber-600 text-white shadow font-semibold';
+        secCreate.classList.remove('hidden');
+        initCreateMode(editProblemId);
+      } else if (mode === 'list') {
+        navList.className = 'px-3 py-1 rounded-lg transition-all flex items-center space-x-1 bg-amber-600 text-white shadow font-semibold';
+        secList.classList.remove('hidden');
+        renderProblemList();
+      }
+    }
+
+    // イベント登録
+    window.addEventListener('DOMContentLoaded', () => {
+      loadProblems();
+
+      // ナビゲーション
+      document.getElementById('navSolve').addEventListener('click', () => switchMode('solve'));
+      document.getElementById('navCreate').addEventListener('click', () => switchMode('create'));
+      document.getElementById('navList').addEventListener('click', () => switchMode('list'));
+
+      // 解くモード
+      document.getElementById('btnPrevProblem').addEventListener('click', () => {
+        if (problems.length <= 1) return;
+        currentProblemIndex = (currentProblemIndex - 1 + problems.length) % problems.length;
+        renderCurrentSolveProblem();
+      });
+
+      const goToNextProblem = () => {
+        if (problems.length <= 1) return;
+        currentProblemIndex = (currentProblemIndex + 1) % problems.length;
+        renderCurrentSolveProblem();
+      };
+
+      document.getElementById('btnNextProblem').addEventListener('click', goToNextProblem);
+      document.getElementById('btnQuickNext').addEventListener('click', goToNextProblem);
+
+      document.getElementById('btnRandomProblem').addEventListener('click', () => {
+        if (problems.length <= 1) return;
+        let nextIdx = currentProblemIndex;
+        while (nextIdx === currentProblemIndex) {
+          nextIdx = Math.floor(Math.random() * problems.length);
+        }
+        currentProblemIndex = nextIdx;
+        renderCurrentSolveProblem();
+        showToast('ランダムに出題しました');
+      });
+
+      document.getElementById('btnResetBoard').addEventListener('click', () => {
+        renderCurrentSolveProblem();
+        showToast('初期局面に戻しました');
+      });
+
+      document.getElementById('btnRetry').addEventListener('click', () => {
+        renderCurrentSolveProblem();
+      });
+
+      document.getElementById('btnShowAnswer').addEventListener('click', () => {
+        solveFirstMoveAnswered = true;
+        renderSolveBoardUI();
+        document.getElementById('explanationBox').classList.remove('hidden');
+      });
+
+      document.getElementById('btnUndoMove').addEventListener('click', () => {
+        if (solveHistory.length === 0) return;
+        const last = solveHistory.pop();
+        currentSolveBoard = last.board;
+        solveCurrentTurn = last.turn;
+        solveCurrentMoveCount = last.moveCount;
+        solveBlackPrisoners = last.blackPrisoners;
+        solveWhitePrisoners = last.whitePrisoners;
+        solveKoCoord = last.ko;
+        solveFirstMoveAnswered = last.wasFirstMove;
+
+        updateAgehamaUI();
+        updateSolveTurnUI();
+        renderSolveBoardUI(last.lastCoord);
+      });
+
+      document.getElementById('btnPassMove').addEventListener('click', () => {
+        solveCurrentTurn = solveCurrentTurn === 'B' ? 'W' : 'B';
+        solveCurrentMoveCount++;
+        updateSolveTurnUI();
+        showToast('パスしました');
+      });
+
+      document.getElementById('btnToggleReview').addEventListener('click', () => {
+        if (problems.length === 0) return;
+        const p = problems[currentProblemIndex];
+        p.review = !p.review;
+        saveProblems();
+        updateReviewIcon(p.review);
+        showToast(p.review ? '要復習リストに追加しました' : '要復習を解除しました');
+      });
+
+      // 作成モード
+      document.getElementById('btnToggleEditorTurn').addEventListener('click', () => {
+        editorTurn = editorTurn === 'B' ? 'W' : 'B';
+        document.getElementById('inputTurn').value = editorTurn;
+        updateEditorTurnBadge();
+      });
+
+      document.getElementById('inputProblemMoveCount').addEventListener('input', (e) => {
+        const v = parseInt(e.target.value, 10) || 1;
+        editorMoveCount = v;
+        editorTurn = (v % 2 === 1) ? 'B' : 'W';
+        document.getElementById('inputTurn').value = editorTurn;
+        document.getElementById('editorMoveCountDisplay').textContent = `${v}手目`;
+        updateEditorTurnBadge();
+      });
+
+      document.getElementById('inputTurn').addEventListener('change', (e) => {
+        editorTurn = e.target.value;
+        updateEditorTurnBadge();
+      });
+
+      document.getElementById('btnEditorUndo').addEventListener('click', () => {
+        if (editorHistory.length === 0) return;
+        const last = editorHistory.pop();
+        editorBoard = last.board;
+        editorTurn = last.turn;
+        editorMoveCount = last.moveCount;
+        document.getElementById('inputEditorBlackPrisoners').value = last.blackPrisoners;
+        document.getElementById('inputEditorWhitePrisoners').value = last.whitePrisoners;
+        editorKoCoord = last.ko;
+        syncTurnWithMoveCount();
+        renderEditorBoardUI();
+      });
+
+      document.getElementById('btnClearEditorBoard').addEventListener('click', () => {
+        editorBoard = {};
+        editorHistory = [];
+        document.getElementById('inputEditorBlackPrisoners').value = 0;
+        document.getElementById('inputEditorWhitePrisoners').value = 0;
+        syncTurnWithMoveCount();
+        renderEditorBoardUI();
+        showToast('盤面を消去しました');
+      });
+
+      document.getElementById('btnSaveProblem').addEventListener('click', () => {
+        const title = document.getElementById('inputTitle').value.trim() || '無題の問題';
+        const category = document.getElementById('inputCategory').value.trim() || 'ヨセ';
+        const moveCount = parseInt(document.getElementById('inputProblemMoveCount').value, 10) || 1;
+        const turn = document.getElementById('inputTurn').value;
+        const explanation = document.getElementById('inputExplanation').value.trim();
+        const initialBlackPrisoners = parseInt(document.getElementById('inputEditorBlackPrisoners').value, 10) || 0;
+        const initialWhitePrisoners = parseInt(document.getElementById('inputEditorWhitePrisoners').value, 10) || 0;
+
+        const solutions = [];
+        for (let i = 0; i < 5; i++) {
+          const coordEl = document.getElementById(`slotCoord_${i}`);
+          const labelEl = document.getElementById(`slotLabel_${i}`);
+          const leadEl = document.getElementById(`slotScoreLead_${i}`);
+          const annoEl = document.getElementById(`slotAnnotation_${i}`);
+
+          if (coordEl && coordEl.value.trim()) {
+            const rawCoord = coordEl.value.trim().toUpperCase();
+            const { colIdx, rowIdx } = parseCoord(rawCoord);
+            if (colIdx !== -1 && rowIdx !== -1) {
+              const leadNum = parseFloat(leadEl.value) || 0.0;
+              solutions.push({
+                coord: rawCoord,
+                label: labelEl.value.trim() || `正解 ${i + 1}`,
+                scoreLead: leadNum,
+                annotation: annoEl.value.trim()
+              });
+            }
+          }
+        }
+
+        if (solutions.length === 0) {
+          showToast('正解手を少なくとも1つ登録してください（例: D3）');
+          return;
+        }
+
+        const newProb = {
+          id: 'prob_' + Date.now(),
+          title,
+          category,
+          moveCount,
+          turn,
+          initialBlackPrisoners,
+          initialWhitePrisoners,
+          stones: { ...editorBoard },
+          solutions,
+          explanation,
+          review: false
+        };
+
+        problems.push(newProb);
+        currentProblemIndex = problems.length - 1;
+        saveProblems();
+        showToast('問題を新規保存しました！');
+        switchMode('solve');
+      });
+
+      // フィルタ
+      document.getElementById('filterAll').addEventListener('click', () => {
+        currentFilter = 'all';
+        document.getElementById('filterAll').className = 'px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold';
+        document.getElementById('filterReview').className = 'px-3 py-1.5 rounded-xl bg-slate-900 text-slate-300 hover:text-white text-xs flex items-center space-x-1 border border-slate-800';
+        renderProblemList();
+      });
+
+      document.getElementById('filterReview').addEventListener('click', () => {
+        currentFilter = 'review';
+        document.getElementById('filterReview').className = 'px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold flex items-center space-x-1';
+        document.getElementById('filterAll').className = 'px-3 py-1.5 rounded-xl bg-slate-900 text-slate-300 hover:text-white text-xs';
+        renderProblemList();
+      });
+
+      // JSON エクスポート & インポート
+      document.getElementById('btnExportJson').addEventListener('click', () => {
+        const jsonStr = JSON.stringify(problems, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `katago_9x9_problems_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('JSONファイルを書き出しました');
+      });
+
+      document.getElementById('inputFileJson').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const data = JSON.parse(event.target.result);
+            if (Array.isArray(data)) {
+              problems = data;
+              currentProblemIndex = 0;
+              saveProblems();
+              renderProblemList();
+              showToast('問題集を読み込みました！');
+            } else {
+              showToast('形式が正しくありません');
+            }
+          } catch (err) {
+            showToast('JSON読み込みに失敗しました');
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // 初回表示
+      switchMode('solve');
+    });
+  </script>
+</body>
+</html>
