@@ -10,16 +10,18 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
-      --board-bg: #e4a864;
-      --board-line: #3d2611;
+      --board-wood: #dc9b55;
+      --board-line: #2e1a09;
+      --star-color: #2e1a09;
       --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --bg: #f8fafc;
+      --primary-dark: #1d4ed8;
+      --bg: #f1f5f9;
       --card-bg: #ffffff;
-      --text: #1e293b;
-      --border: #e2e8f0;
-      --success: #16a34a;
-      --danger: #dc2626;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --success: #15803d;
+      --danger: #b91c1c;
     }
     * {
       box-sizing: border-box;
@@ -28,57 +30,57 @@
       -webkit-tap-highlight-color: transparent;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
       background: var(--bg);
       color: var(--text);
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      padding-bottom: 70px;
+      padding-bottom: 74px;
     }
     header {
       width: 100%;
-      max-width: 500px;
+      max-width: 480px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 12px;
+      padding: 10px 14px;
       background: var(--card-bg);
       border-bottom: 1px solid var(--border);
     }
     .app-title {
       font-size: 1.05rem;
-      font-weight: 700;
-      color: #334155;
+      font-weight: 800;
+      color: #1e293b;
     }
     .tabs {
       display: flex;
-      gap: 4px;
+      gap: 6px;
     }
     .tab-btn {
-      padding: 6px 12px;
+      padding: 6px 14px;
       border: 1px solid var(--border);
       background: var(--card-bg);
       border-radius: 6px;
       font-size: 0.85rem;
-      font-weight: 600;
-      color: #64748b;
+      font-weight: 700;
+      color: var(--muted);
       cursor: pointer;
     }
     .tab-btn.active {
       background: var(--primary);
-      color: #fff;
+      color: #ffffff;
       border-color: var(--primary);
     }
     main {
       width: 100%;
-      max-width: 500px;
-      padding: 8px 10px;
+      max-width: 480px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
     .info-bar {
       width: 100%;
@@ -86,37 +88,32 @@
       justify-content: space-between;
       align-items: center;
       background: var(--card-bg);
-      padding: 6px 12px;
+      padding: 8px 12px;
       border-radius: 8px;
       border: 1px solid var(--border);
       font-size: 0.85rem;
-      font-weight: 600;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 0.8rem;
+      font-weight: 700;
     }
     .badge-turn {
-      background: #334155;
-      color: #fff;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      background: #0f172a;
+      color: #ffffff;
     }
     .badge-turn.white {
-      background: #f1f5f9;
+      background: #f8fafc;
       color: #0f172a;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #94a3b8;
     }
     .board-container {
       width: 100%;
-      max-width: 440px;
+      max-width: 420px;
       aspect-ratio: 1;
-      background: var(--board-bg);
-      padding: 18px 12px 12px 18px;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      background: var(--board-wood);
+      padding: 20px 14px 14px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.22);
       position: relative;
       touch-action: manipulation;
     }
@@ -128,8 +125,8 @@
     }
     .board-label {
       font-size: 10px;
-      fill: #5c3c1e;
-      font-weight: 700;
+      fill: #3e2208;
+      font-weight: 800;
       text-anchor: middle;
       dominant-baseline: central;
     }
@@ -138,7 +135,7 @@
       background: var(--card-bg);
       border-radius: 8px;
       border: 1px solid var(--border);
-      padding: 10px;
+      padding: 12px;
       display: none;
       flex-direction: column;
       gap: 8px;
@@ -152,38 +149,38 @@
       align-items: center;
     }
     .feedback-title {
-      font-weight: 700;
+      font-weight: 800;
       font-size: 1rem;
     }
     .feedback-title.correct { color: var(--success); }
     .feedback-title.wrong { color: var(--danger); }
     .btn-quick-next {
       background: var(--primary);
-      color: #fff;
+      color: #ffffff;
       border: none;
-      padding: 5px 12px;
+      padding: 6px 14px;
       border-radius: 6px;
       font-size: 0.8rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
     }
     .sol-card {
       background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 8px;
+      padding: 8px 10px;
       font-size: 0.85rem;
     }
     .sol-card.active-sol {
       border-color: var(--success);
-      background: #f0fdf4;
+      background: #ecfdf5;
     }
     .sticky-nav {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      height: 58px;
+      height: 60px;
       background: #ffffff;
       border-top: 1px solid var(--border);
       display: flex;
@@ -191,22 +188,22 @@
       align-items: center;
       padding: 0 12px;
       z-index: 100;
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
     }
     .sticky-nav-inner {
       width: 100%;
-      max-width: 500px;
+      max-width: 480px;
       display: flex;
       gap: 8px;
     }
     .nav-btn {
       flex: 1;
-      height: 40px;
+      height: 42px;
       border: 1px solid var(--border);
       background: #f8fafc;
       border-radius: 8px;
       font-size: 0.85rem;
-      font-weight: 600;
+      font-weight: 700;
       color: #334155;
       cursor: pointer;
       display: flex;
@@ -216,25 +213,25 @@
     }
     .nav-btn.primary {
       background: var(--primary);
-      color: #fff;
+      color: #ffffff;
       border-color: var(--primary);
-      flex: 1.4;
+      flex: 1.5;
     }
     .editor-card {
       width: 100%;
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 10px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
     .edit-status-banner {
       display: none;
-      padding: 6px 10px;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
+      padding: 8px 12px;
+      background: #dbeafe;
+      border: 1px solid #93c5fd;
       border-radius: 6px;
       font-size: 0.8rem;
       color: #1e40af;
@@ -251,861 +248,16 @@
     }
     .form-label {
       font-size: 0.75rem;
-      font-weight: 600;
-      color: #64748b;
+      font-weight: 700;
+      color: var(--muted);
     }
     .input-text {
       width: 100%;
-      padding: 6px 8px;
+      padding: 7px 9px;
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 0.85rem;
+      color: #1e293b;
     }
     .sol-editor-item {
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px;
-      background: #fafafa;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .sol-editor-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-    .stepper-wrap {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .step-btn {
-      padding: 4px 6px;
-      border: 1px solid var(--border);
-      background: #fff;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .step-input {
-      width: 55px;
-      text-align: center;
-      padding: 4px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-    .pick-btn {
-      padding: 4px 8px;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .pick-btn.active {
-      background: var(--danger);
-      color: #fff;
-      border-color: var(--danger);
-      animation: pulse 1.2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
-    }
-    .action-row {
-      display: flex;
-      gap: 6px;
-      margin-top: 6px;
-    }
-    .btn {
-      flex: 1;
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 4px;
-    }
-    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-    .btn-secondary { background: #e2e8f0; color: #334155; }
-    .q-list {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .q-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.85rem;
-    }
-  </style>
-</head>
-<body>
-
-  <header>
-    <div class="app-title">9路盤 次の一手</div>
-    <div class="tabs">
-      <button class="tab-btn active" id="tabSolve" onclick="setTab('solve')">解く</button>
-      <button class="tab-btn" id="tabCreate" onclick="setTab('create')">作成</button>
-      <button class="tab-btn" id="tabList" onclick="setTab('list')">一覧</button>
-    </div>
-  </header>
-
-  <main>
-    <div class="info-bar" id="solveInfo">
-      <div style="display:flex; gap:6px; align-items:center;">
-        <span class="badge badge-turn" id="turnBadge">黒番</span>
-        <span id="moveCountText">45手目</span>
-      </div>
-      <div>
-        <span style="font-size:0.75rem; color:#64748b;">アゲハマ:</span>
-        <span style="margin-left:4px;">● <span id="capBlack">0</span></span>
-        <span style="margin-left:6px;">○ <span id="capWhite">0</span></span>
-      </div>
-    </div>
-
-    <div class="board-container">
-      <svg class="board-svg" id="boardSvg" viewBox="0 0 324 324"></svg>
-    </div>
-
-    <!-- 解答後のフィードバック -->
-    <div class="feedback-box" id="feedbackBox">
-      <div class="feedback-header">
-        <span class="feedback-title" id="feedbackTitle">判定</span>
-        <button class="btn-quick-next" onclick="nextQuestion()">次の問題 ➔</button>
-      </div>
-      <div id="feedbackDetail"></div>
-    </div>
-
-    <!-- 作成・編集エリア -->
-    <div class="editor-card" id="editorCard" style="display:none;">
-      <!-- 編集中の案内バナー -->
-      <div class="edit-status-banner" id="editBanner">
-        <span id="editBannerText"><i class="fa-solid fa-pen-to-square"></i> 問題 #1 を編集更新中</span>
-        <button onclick="cancelEditing()" style="border:none; background:transparent; color:#ef4444; font-weight:700; cursor:pointer; font-size:0.75rem;">編集解除 (新規へ)</button>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">問題タイトル</label>
-        <input type="text" class="input-text" id="qTitle" placeholder="例: ヨセの手筋 D3">
-      </div>
-
-      <div style="display:flex; gap:8px;">
-        <div class="form-group" style="flex:1;">
-          <label class="form-label">手番 & 手数</label>
-          <div style="display:flex; gap:4px; align-items:center;">
-            <select class="input-text" id="qTurn" style="width:70px;" onchange="syncTurnAndMove(true)">
-              <option value="B">黒番</option>
-              <option value="W">白番</option>
-            </select>
-            <input type="number" class="input-text" id="qMoveCount" style="width:65px;" value="45" onchange="syncTurnAndMove(false)">
-            <span style="font-size:0.8rem; color:#64748b;">手目</span>
-          </div>
-        </div>
-
-        <div class="form-group" style="flex:1;">
-          <label class="form-label">アゲハマ (黒 / 白)</label>
-          <div style="display:flex; gap:6px;">
-            <div class="stepper-wrap">
-              <button class="step-btn" onclick="stepVal('qCapB', 1)">+</button>
-              <input type="number" id="qCapB" class="step-input" style="width:36px;" value="0">
-              <button class="step-btn" onclick="stepVal('qCapB', -1)">-</button>
-            </div>
-            <div class="stepper-wrap">
-              <button class="step-btn" onclick="stepVal('qCapW', 1)">+</button>
-              <input type="number" id="qCapW" class="step-input" style="width:36px;" value="0">
-              <button class="step-btn" onclick="stepVal('qCapW', -1)">-</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-        <span style="font-size:0.8rem; font-weight:700; color:#475569;">正解手・候補手（最大5択）</span>
-        <button class="pick-btn" onclick="clearBoardStones()">盤面初期化</button>
-      </div>
-
-      <div id="solutionsEditorList" style="display:flex; flex-direction:column; gap:6px;"></div>
-
-      <div class="action-row">
-        <button class="btn btn-primary" onclick="saveCurrentQuestion(false)" id="saveBtn">
-          <i class="fa-solid fa-floppy-disk"></i> 保存
-        </button>
-        <button class="btn btn-secondary" onclick="saveCurrentQuestion(true)" id="saveAsNewBtn" style="display:none;">
-          別名で新規追加
-        </button>
-      </div>
-    </div>
-
-    <!-- 一覧エリア -->
-    <div class="editor-card" id="listCard" style="display:none;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:0.85rem; font-weight:700;">登録問題一覧 (<span id="totalQCount">0</span>問)</span>
-        <div style="display:flex; gap:4px;">
-          <button class="pick-btn" onclick="exportJSON()"><i class="fa-solid fa-download"></i> 保存</button>
-          <button class="pick-btn" onclick="importJSON()"><i class="fa-solid fa-upload"></i> 読込</button>
-        </div>
-      </div>
-      <div class="q-list" id="questionsContainer"></div>
-    </div>
-  </main>
-
-  <!-- 画面下部固定ナビゲーション -->
-  <div class="sticky-nav" id="stickyNav">
-    <div class="sticky-nav-inner">
-      <button class="nav-btn" onclick="prevQuestion()"><i class="fa-solid fa-arrow-left"></i> 前へ</button>
-      <button class="nav-btn" onclick="randomQuestion()"><i class="fa-solid fa-shuffle"></i></button>
-      <button class="nav-btn primary" onclick="nextQuestion()">次へ <i class="fa-solid fa-arrow-right"></i></button>
-    </div>
-  </div>
-
-  <input type="file" id="jsonFileInput" accept=".json" style="display:none;" onchange="handleFileSelect(event)">
-
-  <script>
-    const COLS = ['A','B','C','D','E','F','G','H','J'];
-    const SIZE = 9;
-    const STORAGE_KEY = 'go9_quiz_data_v3';
-
-    // 内部ステート
-    let currentTab = 'solve';
-    let currentIdx = 0;
-    let pickingSlot = null; // 座標取得中のスロット番号 (0-4)
-    let editingQuestionId = null; // 編集中の問題ID（nullなら新規作成）
-
-    // 盤面データ
-    let board = Array(SIZE).fill(null).map(() => Array(SIZE).fill(0)); // 0:空, 1:黒, 2:白
-    let prisoners = { B: 0, W: 0 };
-    let currentTurn = 'B';
-    let answered = false;
-
-    // 問題データリスト（初期サンプル）
-    let questions = [
-      {
-        id: 1,
-        title: "基本ヨセ サンプル",
-        moveCount: 45,
-        turn: "B",
-        prisoners: { B: 0, W: 0 },
-        board: [
-          [0,0,0,0,0,0,0,0,0],
-          [0,0,0,0,1,0,0,0,0],
-          [0,0,1,1,2,1,0,0,0],
-          [0,1,2,2,2,1,0,0,0],
-          [1,2,2,0,2,2,1,0,0],
-          [0,1,2,2,1,1,0,0,0],
-          [0,0,1,1,0,0,0,0,0],
-          [0,0,0,0,0,0,0,0,0],
-          [0,0,0,0,0,0,0,0,0]
-        ],
-        solutions: [
-          { coord: "D5", name: "最善手", lead: "+1.5", comment: "中央の白石をアタリにしつつ連絡を断つ手。これが一番得。" },
-          { coord: "C5", name: "次善手", lead: "+0.5", comment: "堅実だが1目損。安全策。" }
-        ]
-      }
-    ];
-
-    // Web Audio 効果音
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playStoneSound(isCorrect = true) {
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      const now = audioCtx.currentTime;
-
-      if (isCorrect) {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(440, now);
-        osc.frequency.exponentialRampToValueAtTime(180, now + 0.08);
-        gain.gain.setValueAtTime(0.8, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-        osc.start(now);
-        osc.stop(now + 0.08);
-      } else {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(220, now);
-        osc.frequency.setValueAtTime(196, now + 0.1);
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        osc.start(now);
-        osc.stop(now + 0.2);
-      }
-    }
-
-    // 初期ロード
-    function init() {
-      loadStorage();
-      renderSolutionsEditor();
-      if (questions.length > 0) {
-        loadQuestion(0);
-      } else {
-        drawBoard();
-      }
-      updateUI();
-    }
-
-    function loadStorage() {
-      const data = localStorage.getItem(STORAGE_KEY);
-      if (data) {
-        try {
-          const parsed = JSON.parse(data);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            questions = parsed;
-          }
-        } catch(e) {}
-      }
-    }
-
-    function saveStorage() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
-      updateListUI();
-    }
-
-    function setTab(tab) {
-      currentTab = tab;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
-
-      document.getElementById('editorCard').style.display = (tab === 'create') ? 'flex' : 'none';
-      document.getElementById('listCard').style.display = (tab === 'list') ? 'flex' : 'none';
-      document.getElementById('stickyNav').style.display = (tab === 'solve') ? 'flex' : 'none';
-      document.getElementById('feedbackBox').classList.remove('show');
-
-      if (tab === 'solve') {
-        if (questions[currentIdx]) loadQuestion(currentIdx);
-      } else if (tab === 'create') {
-        if (editingQuestionId === null) {
-          // 新規作成用の初期化
-          resetEditorForm();
-        }
-        drawBoard();
-      } else if (tab === 'list') {
-        updateListUI();
-      }
-    }
-
-    function drawBoard() {
-      const svg = document.getElementById('boardSvg');
-      svg.innerHTML = '';
-      const cell = 36;
-      const offset = 18;
-
-      // 線
-      for (let i = 0; i < SIZE; i++) {
-        const lineH = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        lineH.setAttribute("x1", offset);
-        lineH.setAttribute("y1", offset + i * cell);
-        lineH.setAttribute("x2", offset + 8 * cell);
-        lineH.setAttribute("y2", offset + i * cell);
-        lineH.setAttribute("stroke", "var(--board-line)");
-        lineH.setAttribute("stroke-width", "1.2");
-        svg.appendChild(lineH);
-
-        const lineV = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        lineV.setAttribute("x1", offset + i * cell);
-        lineV.setAttribute("y1", offset);
-        lineV.setAttribute("x2", offset + i * cell);
-        lineV.setAttribute("y2", offset + 8 * cell);
-        lineV.setAttribute("stroke", "var(--board-line)");
-        lineV.setAttribute("stroke-width", "1.2");
-        svg.appendChild(lineV);
-      }
-
-      // 星 (3x3, 7x7, 5x5, 3x7, 7x3)
-      const stars = [[2,2],[6,2],[4,4],[2,6],[6,6]];
-      stars.forEach(([r, c]) => {
-        const star = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        star.setAttribute("cx", offset + c * cell);
-        star.setAttribute("cy", offset + r * cell);
-        star.setAttribute("r", 2.5);
-        star.setAttribute("fill", "var(--board-line)");
-        svg.appendChild(star);
-      });
-
-      // 座標ラベル
-      for (let i = 0; i < SIZE; i++) {
-        const txtTop = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        txtTop.setAttribute("x", offset + i * cell);
-        txtTop.setAttribute("y", 6);
-        txtTop.setAttribute("class", "board-label");
-        txtTop.textContent = COLS[i];
-        svg.appendChild(txtTop);
-
-        const txtLeft = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        txtLeft.setAttribute("x", 6);
-        txtLeft.setAttribute("y", offset + i * cell);
-        txtLeft.setAttribute("class", "board-label");
-        txtLeft.textContent = (9 - i);
-        svg.appendChild(txtLeft);
-      }
-
-      // 石
-      for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-          const val = board[r][c];
-          if (val !== 0) {
-            const stone = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            stone.setAttribute("cx", offset + c * cell);
-            stone.setAttribute("cy", offset + r * cell);
-            stone.setAttribute("r", 16);
-            if (val === 1) {
-              stone.setAttribute("fill", "#111827");
-            } else {
-              stone.setAttribute("fill", "#f8fafc");
-              stone.setAttribute("stroke", "#94a3b8");
-              stone.setAttribute("stroke-width", "1");
-            }
-            svg.appendChild(stone);
-          }
-        }
-      }
-
-      // タップ感知エリア
-      for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-          rect.setAttribute("x", offset + c * cell - cell/2);
-          rect.setAttribute("y", offset + r * cell - cell/2);
-          rect.setAttribute("width", cell);
-          rect.setAttribute("height", cell);
-          rect.setAttribute("fill", "transparent");
-          rect.style.cursor = "pointer";
-          rect.onclick = () => onCellClick(r, c);
-          svg.appendChild(rect);
-        }
-      }
-    }
-
-    function onCellClick(r, c) {
-      const coord = `${COLS[c]}${9 - r}`;
-
-      if (currentTab === 'create') {
-        if (pickingSlot !== null) {
-          // 正解スロットへの座標反映
-          const coordInput = document.getElementById(`solCoord_${pickingSlot}`);
-          if (coordInput) coordInput.value = coord;
-          stopPicking();
-          return;
-        }
-
-        // 盤面上の石を反転 (空 -> 黒 -> 白 -> 空)
-        board[r][c] = (board[r][c] + 1) % 3;
-        drawBoard();
-        autoDetectTurnFromStones();
-        return;
-      }
-
-      if (currentTab === 'solve') {
-        if (answered) return;
-        const q = questions[currentIdx];
-        if (!q) return;
-
-        // 正解手判定
-        const hitSol = q.solutions.find(s => s.coord.toUpperCase() === coord);
-        const fbBox = document.getElementById('feedbackBox');
-        const fbTitle = document.getElementById('feedbackTitle');
-        const fbDetail = document.getElementById('feedbackDetail');
-
-        if (hitSol) {
-          playStoneSound(true);
-          answered = true;
-          board[r][c] = (currentTurn === 'B') ? 1 : 2;
-          drawBoard();
-
-          fbTitle.innerHTML = `⭕ 正解！ <span style="font-size:0.85rem; color:#1e293b; font-weight:600;">(${hitSol.coord} ${hitSol.name || ''})</span>`;
-          fbTitle.className = 'feedback-title correct';
-
-          let html = `
-            <div class="sol-card active-sol">
-              <div style="font-weight:700; display:flex; justify-content:space-between;">
-                <span>打った手: ${hitSol.coord} [${hitSol.name || '正解'}]</span>
-                <span style="color:var(--primary); font-weight:800;">${hitSol.lead || ''}</span>
-              </div>
-              <div style="margin-top:4px; font-size:0.8rem; color:#334155; white-space:pre-wrap;">${hitSol.comment || '解説なし'}</div>
-            </div>
-          `;
-
-          // 他の候補手一覧
-          const otherSols = q.solutions.filter(s => s.coord.toUpperCase() !== coord);
-          if (otherSols.length > 0) {
-            html += `<div style="font-size:0.75rem; font-weight:700; color:#64748b; margin-top:6px;">その他の候補手:</div>`;
-            otherSols.forEach(s => {
-              html += `
-                <div class="sol-card" style="margin-top:4px;">
-                  <div style="font-weight:700; display:flex; justify-content:space-between;">
-                    <span>${s.coord} [${s.name || ''}]</span>
-                    <span style="color:#64748b;">${s.lead || ''}</span>
-                  </div>
-                  <div style="margin-top:2px; font-size:0.75rem; color:#64748b;">${s.comment || ''}</div>
-                </div>
-              `;
-            });
-          }
-
-          fbDetail.innerHTML = html;
-          fbBox.classList.add('show');
-        } else {
-          playStoneSound(false);
-          fbTitle.textContent = `❌ 不正解 (${coord})`;
-          fbTitle.className = 'feedback-title wrong';
-          fbDetail.innerHTML = `<span style="font-size:0.8rem; color:#64748b;">最善手・有力手ではありません。もう一度考えてみましょう。</span>`;
-          fbBox.classList.add('show');
-        }
-      }
-    }
-
-    function loadQuestion(idx) {
-      if (!questions[idx]) return;
-      currentIdx = idx;
-      const q = questions[idx];
-      board = JSON.parse(JSON.stringify(q.board));
-      prisoners = { ...(q.prisoners || { B: 0, W: 0 }) };
-      currentTurn = q.turn || 'B';
-      answered = false;
-
-      document.getElementById('turnBadge').textContent = (currentTurn === 'B') ? '黒番' : '白番';
-      document.getElementById('turnBadge').className = `badge badge-turn ${currentTurn === 'W' ? 'white' : ''}`;
-      document.getElementById('moveCountText').textContent = `${q.moveCount || 45}手目`;
-      document.getElementById('capBlack').textContent = prisoners.B;
-      document.getElementById('capWhite').textContent = prisoners.W;
-
-      document.getElementById('feedbackBox').classList.remove('show');
-      drawBoard();
-    }
-
-    function prevQuestion() {
-      if (questions.length === 0) return;
-      currentIdx = (currentIdx - 1 + questions.length) % questions.length;
-      loadQuestion(currentIdx);
-    }
-
-    function nextQuestion() {
-      if (questions.length === 0) return;
-      currentIdx = (currentIdx + 1) % questions.length;
-      loadQuestion(currentIdx);
-    }
-
-    function randomQuestion() {
-      if (questions.length === 0) return;
-      currentIdx = Math.floor(Math.random() * questions.length);
-      loadQuestion(currentIdx);
-    }
-
-    // 作成・編集ロジック
-    function renderSolutionsEditor() {
-      const container = document.getElementById('solutionsEditorList');
-      container.innerHTML = '';
-      for (let i = 0; i < 5; i++) {
-        const div = document.createElement('div');
-        div.className = 'sol-editor-item';
-        div.innerHTML = `
-          <div class="sol-editor-header">
-            <span>正解枠 ${i + 1}</span>
-            <div style="display:flex; gap:4px; align-items:center;">
-              <input type="text" id="solCoord_${i}" class="input-text" style="width:46px; text-transform:uppercase; font-weight:700;" placeholder="D3">
-              <button class="pick-btn" id="pickBtn_${i}" onclick="startPicking(${i})"><i class="fa-solid fa-crosshairs"></i> 盤面から指定</button>
-            </div>
-          </div>
-          <div style="display:flex; gap:6px;">
-            <input type="text" id="solName_${i}" class="input-text" style="flex:1;" placeholder="評価 (例: 最善手)">
-            <div class="stepper-wrap">
-              <button class="step-btn" onclick="stepLead(${i}, 1.0)">+1.0</button>
-              <button class="step-btn" onclick="stepLead(${i}, 0.5)">+0.5</button>
-              <input type="text" id="solLead_${i}" class="step-input" value="+0.0">
-              <button class="step-btn" onclick="stepLead(${i}, -0.5)">-0.5</button>
-              <button class="step-btn" onclick="stepLead(${i}, -1.0)">-1.0</button>
-            </div>
-          </div>
-          <textarea id="solComment_${i}" class="input-text" rows="2" placeholder="この手へのコメント・解説"></textarea>
-        `;
-        container.appendChild(div);
-      }
-    }
-
-    function startPicking(slot) {
-      if (pickingSlot === slot) {
-        stopPicking();
-        return;
-      }
-      stopPicking();
-      pickingSlot = slot;
-      const btn = document.getElementById(`pickBtn_${slot}`);
-      if (btn) {
-        btn.classList.add('active');
-        btn.innerHTML = `<i class="fa-solid fa-hand-pointer"></i> 盤面をタップ`;
-      }
-    }
-
-    function stopPicking() {
-      if (pickingSlot !== null) {
-        const btn = document.getElementById(`pickBtn_${pickingSlot}`);
-        if (btn) {
-          btn.classList.remove('active');
-          btn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> 盤面から指定`;
-        }
-      }
-      pickingSlot = null;
-    }
-
-    function stepLead(slot, delta) {
-      const input = document.getElementById(`solLead_${slot}`);
-      let val = parseFloat(input.value) || 0.0;
-      val = Math.round((val + delta) * 10) / 10;
-      input.value = (val >= 0 ? '+' : '') + val.toFixed(1);
-    }
-
-    function stepVal(id, delta) {
-      const input = document.getElementById(id);
-      let val = parseInt(input.value) || 0;
-      input.value = Math.max(0, val + delta);
-    }
-
-    function syncTurnAndMove(fromTurnSelect) {
-      const turnSel = document.getElementById('qTurn');
-      const moveInp = document.getElementById('qMoveCount');
-      if (fromTurnSelect) {
-        let mv = parseInt(moveInp.value) || 1;
-        if (turnSel.value === 'B' && mv % 2 === 0) moveInp.value = mv + 1;
-        if (turnSel.value === 'W' && mv % 2 === 1) moveInp.value = mv + 1;
-      } else {
-        let mv = parseInt(moveInp.value) || 1;
-        turnSel.value = (mv % 2 === 1) ? 'B' : 'W';
-      }
-    }
-
-    function autoDetectTurnFromStones() {
-      let bCount = 0, wCount = 0;
-      for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-          if (board[r][c] === 1) bCount++;
-          if (board[r][c] === 2) wCount++;
-        }
-      }
-      const turnSel = document.getElementById('qTurn');
-      const moveInp = document.getElementById('qMoveCount');
-      if (bCount === wCount) {
-        turnSel.value = 'B';
-      } else if (bCount > wCount) {
-        turnSel.value = 'W';
-      }
-      syncTurnAndMove(true);
-    }
-
-    function clearBoardStones() {
-      board = Array(SIZE).fill(null).map(() => Array(SIZE).fill(0));
-      drawBoard();
-    }
-
-    // 問題の保存処理（上書き vs 新規追加）
-    function saveCurrentQuestion(forceAsNew = false) {
-      const title = document.getElementById('qTitle').value.trim() || "無題の問題";
-      const turn = document.getElementById('qTurn').value;
-      const moveCount = parseInt(document.getElementById('qMoveCount').value) || 45;
-      const capB = parseInt(document.getElementById('qCapB').value) || 0;
-      const capW = parseInt(document.getElementById('qCapW').value) || 0;
-
-      const sols = [];
-      for (let i = 0; i < 5; i++) {
-        const coord = document.getElementById(`solCoord_${i}`).value.trim().toUpperCase();
-        if (coord) {
-          sols.push({
-            coord: coord,
-            name: document.getElementById(`solName_${i}`).value.trim(),
-            lead: document.getElementById(`solLead_${i}`).value.trim(),
-            comment: document.getElementById(`solComment_${i}`).value.trim()
-          });
-        }
-      }
-
-      if (sols.length === 0) {
-        alert("少なくとも1つの正解手（座標）を指定してください。");
-        return;
-      }
-
-      // 上書き更新か新規追加かを判定
-      if (!forceAsNew && editingQuestionId !== null) {
-        // ★既存問題の上書き更新★
-        const qIdx = questions.findIndex(q => q.id === editingQuestionId);
-        if (qIdx !== -1) {
-          questions[qIdx] = {
-            id: editingQuestionId,
-            title: title,
-            turn: turn,
-            moveCount: moveCount,
-            prisoners: { B: capB, W: capW },
-            board: JSON.parse(JSON.stringify(board)),
-            solutions: sols
-          };
-          currentIdx = qIdx;
-        }
-      } else {
-        // ★新規追加★
-        const newId = Date.now();
-        questions.push({
-          id: newId,
-          title: title,
-          turn: turn,
-          moveCount: moveCount,
-          prisoners: { B: capB, W: capW },
-          board: JSON.parse(JSON.stringify(board)),
-          solutions: sols
-        });
-        currentIdx = questions.length - 1;
-      }
-
-      saveStorage();
-      alert(forceAsNew || editingQuestionId === null ? "問題を追加登録しました！" : "問題を上書き更新しました！");
-      setTab('solve');
-    }
-
-    // 一覧から編集を開始
-    function editQuestion(id) {
-      const q = questions.find(item => item.id === id);
-      if (!q) return;
-
-      editingQuestionId = q.id;
-      board = JSON.parse(JSON.stringify(q.board));
-
-      // 編集フォームに既存データを復元
-      document.getElementById('qTitle').value = q.title || '';
-      document.getElementById('qTurn').value = q.turn || 'B';
-      document.getElementById('qMoveCount').value = q.moveCount || 45;
-      document.getElementById('qCapB').value = (q.prisoners && q.prisoners.B) || 0;
-      document.getElementById('qCapW').value = (q.prisoners && q.prisoners.W) || 0;
-
-      // 正解スロット復元
-      for (let i = 0; i < 5; i++) {
-        const sol = q.solutions && q.solutions[i];
-        document.getElementById(`solCoord_${i}`).value = sol ? sol.coord : '';
-        document.getElementById(`solName_${i}`).value = sol ? sol.name : '';
-        document.getElementById(`solLead_${i}`).value = sol ? sol.lead : '+0.0';
-        document.getElementById(`solComment_${i}`).value = sol ? sol.comment : '';
-      }
-
-      // バナーとボタン表示の切り替え
-      document.getElementById('editBanner').classList.add('show');
-      document.getElementById('editBannerText').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> 問題「${q.title}」を編集中 (上書き保存)`;
-      document.getElementById('saveBtn').innerHTML = `<i class="fa-solid fa-check"></i> 上書き保存`;
-      document.getElementById('saveAsNewBtn').style.display = 'inline-flex';
-
-      setTab('create');
-    }
-
-    function cancelEditing() {
-      resetEditorForm();
-      drawBoard();
-    }
-
-    function resetEditorForm() {
-      editingQuestionId = null;
-      document.getElementById('editBanner').classList.remove('show');
-      document.getElementById('saveBtn').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> 保存`;
-      document.getElementById('saveAsNewBtn').style.display = 'none';
-
-      document.getElementById('qTitle').value = '';
-      document.getElementById('qMoveCount').value = 45;
-      document.getElementById('qTurn').value = 'B';
-      document.getElementById('qCapB').value = 0;
-      document.getElementById('qCapW').value = 0;
-      for (let i = 0; i < 5; i++) {
-        document.getElementById(`solCoord_${i}`).value = '';
-        document.getElementById(`solName_${i}`).value = '';
-        document.getElementById(`solLead_${i}`).value = '+0.0';
-        document.getElementById(`solComment_${i}`).value = '';
-      }
-      stopPicking();
-    }
-
-    function deleteQuestion(id) {
-      if (!confirm("この問題を削除しますか？")) return;
-      questions = questions.filter(q => q.id !== id);
-      if (editingQuestionId === id) cancelEditing();
-      if (currentIdx >= questions.length) currentIdx = Math.max(0, questions.length - 1);
-      saveStorage();
-      updateListUI();
-    }
-
-    function updateListUI() {
-      document.getElementById('totalQCount').textContent = questions.length;
-      const container = document.getElementById('questionsContainer');
-      container.innerHTML = '';
-
-      questions.forEach((q, idx) => {
-        const item = document.createElement('div');
-        item.className = 'q-item';
-        const best = (q.solutions && q.solutions[0]) ? q.solutions[0].coord : '-';
-        item.innerHTML = `
-          <div>
-            <div style="font-weight:700;">#${idx + 1} ${q.title}</div>
-            <div style="font-size:0.75rem; color:#64748b;">${q.turn === 'B' ? '黒番' : '白番'} / ${q.moveCount || '-'}手目 / 正解: ${best} (${q.solutions ? q.solutions.length : 0}択)</div>
-          </div>
-          <div style="display:flex; gap:4px;">
-            <button class="pick-btn" onclick="editQuestion(${q.id})"><i class="fa-solid fa-pen"></i> 編集</button>
-            <button class="pick-btn" style="color:#ef4444;" onclick="deleteQuestion(${q.id})"><i class="fa-solid fa-trash"></i></button>
-          </div>
-        `;
-        container.appendChild(item);
-      });
-    }
-
-    // JSON インポート・エクスポート
-    function exportJSON() {
-      const blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `go9_questions_${new Date().toISOString().slice(0,10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function importJSON() {
-      document.getElementById('jsonFileInput').click();
-    }
-
-    function handleFileSelect(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const parsed = JSON.parse(evt.target.result);
-          if (Array.isArray(parsed)) {
-            questions = parsed;
-            saveStorage();
-            alert(`${parsed.length}問のデータを読み込みました！`);
-            setTab('list');
-          }
-        } catch(err) {
-          alert("JSONの読み込みに失敗しました。ファイル形式を確認してください。");
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    function updateUI() {
-      updateListUI();
-    }
-
-    window.onload = init;
-  </script>
-</body>
-</html>
+      border
