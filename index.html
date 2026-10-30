@@ -94,7 +94,7 @@
       width: 100%;
       max-width: 410px;
       background: #dc9b55;
-      padding: 12px;
+      padding: 8px;
       border-radius: 8px;
       box-shadow: 0 4px 14px rgba(0,0,0,0.25);
     }
@@ -104,7 +104,7 @@
       display: block;
     }
     .board-label {
-      font-size: 11px;
+      font-size: 13px;
       fill: #2e1a09;
       font-weight: 800;
       text-anchor: middle;
@@ -205,170 +205,4 @@
       padding: 8px 12px;
       background: #dbeafe;
       border: 1px solid #93c5fd;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      color: #1e40af;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .edit-status-banner.show { display: flex; }
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .form-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #64748b;
-    }
-    .input-text {
-      width: 100%;
-      padding: 7px 9px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      color: #1e293b;
-      user-select: auto;
-    }
-    .sol-editor-item {
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      padding: 8px;
-      background: #f8fafc;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .sol-editor-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-    .stepper-wrap {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-    }
-    .step-btn {
-      padding: 5px 6px;
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 800;
-      color: #1e293b;
-      cursor: pointer;
-    }
-    .step-input {
-      width: 52px;
-      text-align: center;
-      padding: 5px 2px;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      font-weight: 800;
-      color: #1e293b;
-      user-select: auto;
-    }
-    .pick-btn {
-      padding: 5px 9px;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .pick-btn.active {
-      background: #dc2626;
-      color: #ffffff;
-      border-color: #dc2626;
-    }
-    .action-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 6px;
-    }
-    .btn {
-      flex: 1;
-      padding: 9px;
-      border-radius: 6px;
-      border: 1px solid #cbd5e1;
-      font-size: 0.85rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .btn-primary { background: #2563eb; color: #ffffff; border-color: #2563eb; }
-    .btn-secondary { background: #e2e8f0; color: #1e293b; }
-    .q-list {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .q-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px;
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 0.85rem;
-    }
-  </style>
-</head>
-<body>
-
-  <header>
-    <div class="app-title">9路盤 次の一手</div>
-    <div class="tabs">
-      <button class="tab-btn active" id="tabSolve" onclick="setTab('solve')">解く</button>
-      <button class="tab-btn" id="tabCreate" onclick="setTab('create')">作成</button>
-      <button class="tab-btn" id="tabList" onclick="setTab('list')">一覧</button>
-    </div>
-  </header>
-
-  <main>
-    <div class="info-bar" id="solveInfo">
-      <div style="display:flex; gap:8px; align-items:center;">
-        <span class="badge-turn" id="turnBadge">黒番</span>
-        <span id="moveCountText">45手目</span>
-      </div>
-      <div>
-        <span style="font-size:0.75rem; color:#64748b;">アゲハマ:</span>
-        <span style="margin-left:4px;">● <span id="capBlack">0</span></span>
-        <span style="margin-left:6px;">○ <span id="capWhite">0</span></span>
-      </div>
-    </div>
-
-    <!-- 碁盤（HTML直書きSVGで確実に表示） -->
-    <div class="board-container">
-      <svg class="board-svg" id="boardSvg" viewBox="0 0 350 350">
-        <!-- 盤背景 -->
-        <rect x="0" y="0" width="350" height="350" fill="#dc9b55" rx="6" />
-
-        <!-- 列ラベル (A-J) -->
-        <text class="board-label" x="35" y="14">A</text>
-        <text class="board-label" x="70" y="14">B</text>
-        <text class="board-label" x="105" y="14">C</text>
-        <text class="board-label" x="140" y="14">D</text>
-        <text class="board-label" x="175" y="14">E</text>
-        <text class="board-label" x="210" y="14">F</text>
-        <text class="board-label" x="245" y="14">G</text>
-        <text class="board-label" x="280" y="14">H</text>
-        <text class="board-label" x="315" y="14">J</text>
-
-        <!-- 行ラベル (9-1) -->
-        <text class="board-label" x="14" y="35">9</text>
-        <text class="board-label" x="14" y="70">8</text>
-        <text class="board-label" x="14" y="105">7</text>
-        <text class="board-label" x="14" y="140">6</text>
-        <text class="board-label" x="14" y="175">5</text>
-        <text class="board-label" x="14" y="210">4</text>
-        <text class="board-label" x="14" y="245">3</text>
-        <text class="board-label" x="14" y="280">2</text>
-        <text class="board-label" x="14" y="315">1</text>
+      border-radius:
