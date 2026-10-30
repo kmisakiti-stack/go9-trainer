@@ -532,7 +532,7 @@
     var nextEditColor = 1;
     var editHistory = [];
 
-    var defaultCandidateNames = ["最善手", "次善手", "変化球", "失敗図", "参考図"];
+    var defaultCandidateNames = ["最善手", "次善手", "", "", ""];
 
     var questions = [
       {
@@ -990,18 +990,19 @@
       if (!container) return;
       container.innerHTML = '';
       for (var i = 0; i < 5; i++) {
-        var defaultName = defaultCandidateNames[i] || ("候補 " + (i + 1));
+        var labelTitle = (i === 0) ? "最善手 (必須)" : ((i === 1) ? "次善手" : ("候補手 " + (i + 1)));
+        var initVal = defaultCandidateNames[i] || "";
         var div = document.createElement('div');
         div.className = 'sol-editor-item';
         div.innerHTML = '<div class="sol-editor-header">' +
-            '<span>' + defaultName + '</span>' +
+            '<span>' + labelTitle + '</span>' +
             '<div style="display:flex; gap:4px; align-items:center;">' +
               '<input type="text" id="solCoord_' + i + '" class="input-text" style="width:46px; text-transform:uppercase; font-weight:700;" placeholder="D3">' +
               '<button class="pick-btn" id="pickBtn_' + i + '" onclick="startPicking(' + i + ')">指定</button>' +
             '</div>' +
           '</div>' +
           '<div style="display:flex; gap:6px;">' +
-            '<input type="text" id="solName_' + i + '" class="input-text" style="flex:1;" value="' + defaultName + '" placeholder="評価">' +
+            '<input type="text" id="solName_' + i + '" class="input-text" style="flex:1;" value="' + initVal + '" placeholder="評価 (例: 3番手・妥協策など)">' +
             '<div class="stepper-wrap">' +
               '<button class="step-btn" onclick="stepLead(' + i + ', 1.0)">+1.0</button>' +
               '<button class="step-btn" onclick="stepLead(' + i + ', 0.5)">+0.5</button>' +
@@ -1134,7 +1135,7 @@
         if (coord) {
           sols.push({
             coord: coord,
-            name: document.getElementById("solName_" + i).value.trim() || defaultCandidateNames[i],
+            name: document.getElementById("solName_" + i).value.trim() || (i === 0 ? "最善手" : (i === 1 ? "次善手" : "候補手 " + (i + 1))),
             lead: document.getElementById("solLead_" + i).value.trim(),
             comment: document.getElementById("solComment_" + i).value.trim()
           });
@@ -1209,7 +1210,7 @@
       for (var i = 0; i < 5; i++) {
         var sol = q.solutions && q.solutions[i];
         document.getElementById("solCoord_" + i).value = sol ? sol.coord : '';
-        document.getElementById("solName_" + i).value = sol ? sol.name : defaultCandidateNames[i];
+        document.getElementById("solName_" + i).value = sol ? sol.name : (defaultCandidateNames[i] || "");
         document.getElementById("solLead_" + i).value = sol ? sol.lead : '+0.0';
         document.getElementById("solComment_" + i).value = sol ? sol.comment : '';
       }
@@ -1242,7 +1243,7 @@
       document.getElementById('qCapW').value = 0;
       for (var i = 0; i < 5; i++) {
         document.getElementById("solCoord_" + i).value = '';
-        document.getElementById("solName_" + i).value = defaultCandidateNames[i];
+        document.getElementById("solName_" + i).value = defaultCandidateNames[i] || "";
         document.getElementById("solLead_" + i).value = '+0.0';
         document.getElementById("solComment_" + i).value = '';
       }
