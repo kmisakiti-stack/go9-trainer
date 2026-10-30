@@ -915,9 +915,89 @@
       var lastState = editHistory.pop();
       board = lastState.board;
       nextEditColor = lastState.nextEditColor;
+      if (lastState.capB !== undefined) document.getElementById('qCapB').value = lastState.capB;
+      if (lastState.capW !== undefined) document.getElementById('qCapW').value = lastState.capW;
       renderBoard();
       autoDetectTurnFromStones();
       updateUndoButton();
+    }
+
+
+    // 囲碁の呼吸点（ダメ）判定
+    function getGroupAndLiberties(r, c, targetBoard) {
+      var color = targetBoard[r][c];
+      if (color === 0) return { stones: [], liberties: 0 };
+
+      var stones = [];
+      var visited = Array(SIZE).fill(0).map(function() { return Array(SIZE).fill(false); });
+      var libertySet = {};
+      var queue = [[r, c]];
+      visited[r][c] = true;
+
+      var dr = [-1, 1, 0, 0];
+      var dc = [0, 0, -1, 1];
+
+      while (queue.length > 0) {
+        var curr = queue.shift();
+        var cr = curr[0], cc = curr[1];
+        stones.push([cr, cc]);
+
+        for (var i = 0; i < 4; i++) {
+          var nr = cr + dr[i];
+          var nc = cc + dc[i];
+          if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+            if (targetBoard[nr][nc] === 0) {
+              libertySet[nr + ',' + nc] = true;
+            } else if (targetBoard[nr][nc] === color && !visited[nr][nc]) {
+              visited[nr][nc] = true;
+              queue.push([nr, nc]);
+            }
+          }
+        }
+      }
+
+      return {
+        stones: stones,
+        liberties: Object.keys(libertySet).length
+      };
+    }
+
+    // 相手石を囲んだ時に石を取り、アゲハマに加算する処理
+    function captureOpponentStones(r, c, placedColor) {
+      var opponent = (placedColor === 1) ? 2 : 1;
+      var dr = [-1, 1, 0, 0];
+      var dc = [0, 0, -1, 1];
+      var capturedTotal = 0;
+
+      for (var i = 0; i < 4; i++) {
+        var nr = r + dr[i];
+        var nc = c + dc[i];
+        if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+          if (board[nr][nc] === opponent) {
+            var groupInfo = getGroupAndLiberties(nr, nc, board);
+            if (groupInfo.liberties === 0) {
+              for (var s = 0; s < groupInfo.stones.length; s++) {
+                var sr = groupInfo.stones[s][0];
+                var sc = groupInfo.stones[s][1];
+                board[sr][sc] = 0;
+                capturedTotal++;
+              }
+            }
+          }
+        }
+      }
+
+      if (capturedTotal > 0) {
+        if (placedColor === 1) {
+          var capBInput = document.getElementById('qCapB');
+          if (capBInput) capBInput.value = parseInt(capBInput.value || 0) + capturedTotal;
+        } else {
+          var capWInput = document.getElementById('qCapW');
+          if (capWInput) capWInput.value = parseInt(capWInput.value || 0) + capturedTotal;
+        }
+      }
+
+      return capturedTotal;
     }
 
     function updateUndoButton() {
@@ -938,26 +1018,41 @@
 
         editHistory.push({
           board: JSON.parse(JSON.stringify(board)),
-          nextEditColor: nextEditColor
+          nextEditColor: nextEditColor,
+          capB: parseInt(document.getElementById('qCapB').value) || 0,
+          capW: parseInt(document.getElementById('qCapW').value) || 0
         });
         updateUndoButton();
 
+        var placed = 0;
         if (editMode === 'alternate') {
           if (board[r][c] === nextEditColor) {
             board[r][c] = 0;
           } else {
             board[r][c] = nextEditColor;
+            placed = nextEditColor;
             nextEditColor = (nextEditColor === 1) ? 2 : 1;
             playStoneSound(true);
           }
         } else if (editMode === 'black') {
           board[r][c] = (board[r][c] === 1) ? 0 : 1;
-          if (board[r][c] === 1) playStoneSound(true);
+          if (board[r][c] === 1) {
+            placed = 1;
+            playStoneSound(true);
+          }
         } else if (editMode === 'white') {
           board[r][c] = (board[r][c] === 2) ? 0 : 2;
-          if (board[r][c] === 2) playStoneSound(true);
+          if (board[r][c] === 2) {
+            placed = 2;
+            playStoneSound(true);
+          }
         } else if (editMode === 'erase') {
           board[r][c] = 0;
+        }
+
+        // 石を置いた場合、囲んだ相手の石を取って盤上から消す（アゲハマ連動）
+        if (placed > 0) {
+          captureOpponentStones(r, c, placed);
         }
 
         renderBoard();
@@ -1278,7 +1373,9 @@
       if (!confirm("盤面の石をすべて消去し、1手目に戻しますか？")) return;
       editHistory.push({
         board: JSON.parse(JSON.stringify(board)),
-        nextEditColor: nextEditColor
+        nextEditColor: nextEditColor,
+        capB: parseInt(document.getElementById('qCapB').value) || 0,
+        capW: parseInt(document.getElementById('qCapW').value) || 0
       });
       updateUndoButton();
 
