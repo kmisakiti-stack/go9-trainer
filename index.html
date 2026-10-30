@@ -1330,11 +1330,15 @@
         var mv2 = parseInt(moveInp.value) || 1;
         turnSel.value = (mv2 % 2 === 1) ? 'B' : 'W';
       }
+      // 手動変更時も次の交互打ち色を手番に強制一致
+      nextEditColor = (turnSel.value === 'B') ? 1 : 2;
+
       var capB = parseInt(document.getElementById('qCapB').value) || 0;
       var capW = parseInt(document.getElementById('qCapW').value) || 0;
       updateInfoBar(turnSel.value, parseInt(moveInp.value) || 1, capB, capW);
     }
 
+    // 盤上の石とアゲハマから手数・手番・次の着手色を完全に連動
     function autoDetectTurnFromStones() {
       var bCount = 0, wCount = 0;
       for (var r = 0; r < SIZE; r++) {
@@ -1343,30 +1347,28 @@
           if (board[r][c] === 2) wCount++;
         }
       }
-      var totalStones = bCount + wCount;
+      var capB = parseInt(document.getElementById('qCapB').value) || 0; // 黒が取った白石
+      var capW = parseInt(document.getElementById('qCapW').value) || 0; // 白が取った黒石
+
+      // 黒が打った総手数 = 盤上の黒石 + 取られた黒石(capW)
+      // 白が打った総手数 = 盤上の白石 + 取られた白石(capB)
+      var totalBMoves = bCount + capW;
+      var totalWMoves = wCount + capB;
+      var totalPlayed = totalBMoves + totalWMoves;
+
       var moveInp = document.getElementById('qMoveCount');
       var turnSel = document.getElementById('qTurn');
 
-      if (moveInp) moveInp.value = Math.max(1, totalStones + 1);
+      var currentMove = totalPlayed + 1;
+      if (moveInp) moveInp.value = Math.max(1, currentMove);
 
-      var turnVal = 'B';
-      if (bCount === wCount) {
-        if (turnSel) turnSel.value = 'B';
-        nextEditColor = 1;
-        turnVal = 'B';
-      } else if (bCount > wCount) {
-        if (turnSel) turnSel.value = 'W';
-        nextEditColor = 2;
-        turnVal = 'W';
-      } else {
-        if (turnSel) turnSel.value = 'B';
-        nextEditColor = 1;
-        turnVal = 'B';
-      }
-      var mvVal = moveInp ? parseInt(moveInp.value) : 1;
-      var capB = parseInt(document.getElementById('qCapB').value) || 0;
-      var capW = parseInt(document.getElementById('qCapW').value) || 0;
-      updateInfoBar(turnVal, mvVal, capB, capW);
+      var turnVal = (totalBMoves === totalWMoves) ? 'B' : 'W';
+      if (turnSel) turnSel.value = turnVal;
+
+      // 交互打ちの「次に置く石の色」を手番と100%一致させる
+      nextEditColor = (turnVal === 'B') ? 1 : 2;
+
+      updateInfoBar(turnVal, currentMove, capB, capW);
     }
 
     function clearBoardStones() {
