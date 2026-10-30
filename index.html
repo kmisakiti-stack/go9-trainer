@@ -916,7 +916,7 @@
       updateListUI();
     }
 
-    function setTab(tab) {
+    function setTab(tab, keepEdit) {
       currentTab = tab;
       var buttons = document.querySelectorAll('.tab-btn');
       for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('active');
@@ -930,7 +930,7 @@
       if (tab === 'solve') {
         if (questions[currentIdx]) loadQuestion(currentIdx);
       } else if (tab === 'create') {
-        if (editingQuestionId === null) {
+        if (!keepEdit) {
           resetEditorForm();
         }
         renderBoard();
@@ -1220,7 +1220,7 @@
       document.getElementById('saveBtn').innerHTML = '上書き保存';
       document.getElementById('saveAsNewBtn').style.display = 'inline-flex';
 
-      setTab('create');
+      setTab('create', true);
     }
 
     function cancelEditing() {
@@ -1235,6 +1235,20 @@
       document.getElementById('editBanner').classList.remove('show');
       document.getElementById('saveBtn').innerHTML = '保存';
       document.getElementById('saveAsNewBtn').style.display = 'none';
+
+      // 盤面をまっさらにリセット
+      board = [
+        [0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0]
+      ];
+      nextEditColor = 1;
 
       document.getElementById('qTitle').value = '';
       document.getElementById('qMoveCount').value = 1;
