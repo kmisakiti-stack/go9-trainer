@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>9路盤 次の一手</title>
-  <meta name="theme-color" content="#d99748">
+  <meta name="theme-color" content="#c89658">
   <style>
     * {
       box-sizing: border-box;
@@ -14,9 +14,9 @@
       user-select: none;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f1f5f9;
-      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -31,12 +31,12 @@
       align-items: center;
       padding: 10px 14px;
       background: #ffffff;
-      border-bottom: 1px solid #cbd5e1;
+      border-bottom: 1px solid #e2e8f0;
     }
     .app-title {
       font-size: 1.05rem;
       font-weight: 800;
-      color: #1e293b;
+      color: #334155;
     }
     .tabs {
       display: flex;
@@ -74,7 +74,7 @@
       background: #ffffff;
       padding: 8px 12px;
       border-radius: 8px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #e2e8f0;
       font-size: 0.85rem;
       font-weight: 700;
     }
@@ -90,30 +90,32 @@
       color: #0f172a;
       border: 1px solid #94a3b8;
     }
+    /* 碁盤外枠（スマホでも潰れない縦横比固定） */
     .board-wrap {
       width: 100%;
       max-width: 410px;
-      aspect-ratio: 1;
-      background: #d99748;
-      border-radius: 8px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
-      padding: 8px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      position: relative;
+      background: #e4a864;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      padding-top: 100%; /* 正方形を強制確保 */
     }
     canvas#boardCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
       display: block;
       touch-action: none;
       cursor: pointer;
+      border-radius: 10px;
     }
     .feedback-box {
       width: 100%;
       background: #ffffff;
       border-radius: 8px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #e2e8f0;
       padding: 12px;
       display: none;
       flex-direction: column;
@@ -129,8 +131,8 @@
       font-weight: 800;
       font-size: 1rem;
     }
-    .feedback-title.correct { color: #15803d; }
-    .feedback-title.wrong { color: #b91c1c; }
+    .feedback-title.correct { color: #16a34a; }
+    .feedback-title.wrong { color: #dc2626; }
     .btn-quick-next {
       background: #2563eb;
       color: #ffffff;
@@ -143,14 +145,14 @@
     }
     .sol-card {
       background: #f8fafc;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #e2e8f0;
       border-radius: 6px;
       padding: 8px 10px;
       font-size: 0.85rem;
     }
     .sol-card.active-sol {
-      border-color: #15803d;
-      background: #ecfdf5;
+      border-color: #16a34a;
+      background: #f0fdf4;
     }
     .sticky-nav {
       position: fixed;
@@ -159,12 +161,13 @@
       right: 0;
       height: 60px;
       background: #ffffff;
-      border-top: 1px solid #cbd5e1;
+      border-top: 1px solid #e2e8f0;
       display: flex;
       justify-content: center;
       align-items: center;
       padding: 0 12px;
       z-index: 100;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
     }
     .sticky-nav-inner {
       width: 100%;
@@ -192,7 +195,7 @@
     .editor-card {
       width: 100%;
       background: #ffffff;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #e2e8f0;
       border-radius: 8px;
       padding: 12px;
       display: flex;
@@ -202,8 +205,8 @@
     .edit-status-banner {
       display: none;
       padding: 8px 12px;
-      background: #dbeafe;
-      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
       border-radius: 6px;
       font-size: 0.8rem;
       color: #1e40af;
@@ -231,10 +234,10 @@
       user-select: auto;
     }
     .sol-editor-item {
-      border: 1px solid #cbd5e1;
+      border: 1px solid #e2e8f0;
       border-radius: 6px;
       padding: 8px;
-      background: #f8fafc;
+      background: #fafafa;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -314,7 +317,7 @@
       align-items: center;
       padding: 10px;
       background: #ffffff;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #e2e8f0;
       border-radius: 8px;
       font-size: 0.85rem;
     }
@@ -383,756 +386,4 @@
           </div>
         </div>
 
-        <div class="form-group" style="flex:1;">
-          <label class="form-label">アゲハマ (黒● / 白○)</label>
-          <div style="display:flex; gap:6px;">
-            <div class="stepper-wrap">
-              <button class="step-btn" onclick="stepVal('qCapB', 1)">+</button>
-              <input type="number" id="qCapB" class="step-input" style="width:36px;" value="0">
-              <button class="step-btn" onclick="stepVal('qCapB', -1)">-</button>
-            </div>
-            <div class="stepper-wrap">
-              <button class="step-btn" onclick="stepVal('qCapW', 1)">+</button>
-              <input type="number" id="qCapW" class="step-input" style="width:36px;" value="0">
-              <button class="step-btn" onclick="stepVal('qCapW', -1)">-</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-        <span style="font-size:0.8rem; font-weight:800; color:#334155;">正解手・候補手（最大5択）</span>
-        <button class="pick-btn" onclick="clearBoardStones()">盤面クリア</button>
-      </div>
-
-      <div id="solutionsEditorList" style="display:flex; flex-direction:column; gap:6px;"></div>
-
-      <div class="action-row">
-        <button class="btn btn-primary" onclick="saveCurrentQuestion(false)" id="saveBtn">保存</button>
-        <button class="btn btn-secondary" onclick="saveCurrentQuestion(true)" id="saveAsNewBtn" style="display:none;">別名で新規追加</button>
-      </div>
-    </div>
-
-    <!-- 一覧エリア -->
-    <div class="editor-card" id="listCard" style="display:none;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:0.85rem; font-weight:800;">登録問題一覧 (<span id="totalQCount">0</span>問)</span>
-        <div style="display:flex; gap:4px;">
-          <button class="pick-btn" onclick="exportJSON()">保存</button>
-          <button class="pick-btn" onclick="importJSON()">読込</button>
-        </div>
-      </div>
-      <div class="q-list" id="questionsContainer"></div>
-    </div>
-  </main>
-
-  <div class="sticky-nav" id="stickyNav">
-    <div class="sticky-nav-inner">
-      <button class="nav-btn" onclick="prevQuestion()">◀ 前へ</button>
-      <button class="nav-btn" onclick="randomQuestion()">🎲 ランダム</button>
-      <button class="nav-btn primary" onclick="nextQuestion()">次へ ▶</button>
-    </div>
-  </div>
-
-  <input type="file" id="jsonFileInput" accept=".json" style="display:none;" onchange="handleFileSelect(event)">
-
-  <script>
-    var COLS = ['A','B','C','D','E','F','G','H','J'];
-    var SIZE = 9;
-    var STORAGE_KEY = 'go9_quiz_data_v3';
-
-    var currentTab = 'solve';
-    var currentIdx = 0;
-    var pickingSlot = null;
-    var editingQuestionId = null;
-
-    var questions = [
-      {
-        id: 1,
-        title: "基本ヨセ サンプル",
-        moveCount: 45,
-        turn: "B",
-        prisoners: { B: 0, W: 0 },
-        board: [
-          [0,0,0,0,0,0,0,0,0],
-          [0,0,0,0,1,0,0,0,0],
-          [0,0,1,1,2,1,0,0,0],
-          [0,1,2,2,2,1,0,0,0],
-          [1,2,2,0,2,2,1,0,0],
-          [0,1,2,2,1,1,0,0,0],
-          [0,0,1,1,0,0,0,0,0],
-          [0,0,0,0,0,0,0,0,0],
-          [0,0,0,0,0,0,0,0,0]
-        ],
-        solutions: [
-          { coord: "D5", name: "最善手", lead: "+1.5", comment: "中央の白石をアタリにしつつ連絡を断つ手。" },
-          { coord: "C5", name: "次善手", lead: "+0.5", comment: "堅実だが1目損。" }
-        ]
-      }
-    ];
-
-    var board = [
-      [0,0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0,0,0]
-    ];
-    var prisoners = { B: 0, W: 0 };
-    var currentTurn = 'B';
-    var answered = false;
-
-    // 音声
-    var audioCtx = null;
-    function playStoneSound(isCorrect) {
-      try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        var osc = audioCtx.createOscillator();
-        var gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        var now = audioCtx.currentTime;
-
-        if (isCorrect) {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(460, now);
-          osc.frequency.exponentialRampToValueAtTime(200, now + 0.08);
-          gain.gain.setValueAtTime(0.7, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-          osc.start(now);
-          osc.stop(now + 0.08);
-        } else {
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(220, now);
-          osc.frequency.setValueAtTime(190, now + 0.12);
-          gain.gain.setValueAtTime(0.4, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-          osc.start(now);
-          osc.stop(now + 0.2);
-        }
-      } catch (e) {}
-    }
-
-    // Canvas 描画エンジン
-    var canvas = null;
-    var ctx = null;
-    var C_SIZE = 700;
-    var PADDING = 70;
-    var STEP = (C_SIZE - PADDING * 2) / 8;
-
-    function renderBoard() {
-      if (!canvas) canvas = document.getElementById('boardCanvas');
-      if (!canvas) return;
-      ctx = canvas.getContext('2d');
-
-      ctx.fillStyle = "#d99748";
-      ctx.fillRect(0, 0, C_SIZE, C_SIZE);
-
-      ctx.strokeStyle = "#2e1a09";
-      ctx.lineWidth = 3.2;
-      ctx.lineCap = "square";
-
-      for (var i = 0; i < SIZE; i++) {
-        var pos = PADDING + i * STEP;
-        ctx.beginPath();
-        ctx.moveTo(PADDING, pos);
-        ctx.lineTo(PADDING + 8 * STEP, pos);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(pos, PADDING);
-        ctx.lineTo(pos, PADDING + 8 * STEP);
-        ctx.stroke();
-      }
-
-      var stars = [[2,2],[6,2],[4,4],[2,6],[6,6]];
-      ctx.fillStyle = "#2e1a09";
-      for (var s = 0; s < stars.length; s++) {
-        var sx = PADDING + stars[s][1] * STEP;
-        var sy = PADDING + stars[s][0] * STEP;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 7, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.fillStyle = "#2e1a09";
-      ctx.font = "bold 24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      for (var c = 0; c < SIZE; c++) {
-        var lx = PADDING + c * STEP;
-        ctx.fillText(COLS[c], lx, 30);
-      }
-      for (var r = 0; r < SIZE; r++) {
-        var ly = PADDING + r * STEP;
-        ctx.fillText(String(9 - r), 30, ly);
-      }
-
-      var radius = STEP * 0.45;
-      for (var row = 0; row < SIZE; row++) {
-        for (var col = 0; col < SIZE; col++) {
-          var val = board[row][col];
-          if (val === 1) {
-            var bx = PADDING + col * STEP;
-            var by = PADDING + row * STEP;
-            ctx.beginPath();
-            ctx.arc(bx, by, radius, 0, Math.PI * 2);
-            ctx.fillStyle = "#0a0e17";
-            ctx.fill();
-          } else if (val === 2) {
-            var wx = PADDING + col * STEP;
-            var wy = PADDING + row * STEP;
-            ctx.beginPath();
-            ctx.arc(wx, wy, radius, 0, Math.PI * 2);
-            ctx.fillStyle = "#ffffff";
-            ctx.fill();
-            ctx.strokeStyle = "#94a3b8";
-            ctx.lineWidth = 2.4;
-            ctx.stroke();
-          }
-        }
-      }
-    }
-
-    function handleCanvasClick(e) {
-      if (!canvas) return;
-      var rect = canvas.getBoundingClientRect();
-      var clientX = e.clientX;
-      var clientY = e.clientY;
-      if (e.touches && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      }
-
-      var scaleX = C_SIZE / rect.width;
-      var scaleY = C_SIZE / rect.height;
-      var x = (clientX - rect.left) * scaleX;
-      var y = (clientY - rect.top) * scaleY;
-
-      var bestCol = -1, bestRow = -1;
-      var minDist = 999999;
-
-      for (var r = 0; r < SIZE; r++) {
-        for (var c = 0; c < SIZE; c++) {
-          var targetX = PADDING + c * STEP;
-          var targetY = PADDING + r * STEP;
-          var dist = Math.hypot(x - targetX, y - targetY);
-          if (dist < minDist) {
-            minDist = dist;
-            bestCol = c;
-            bestRow = r;
-          }
-        }
-      }
-
-      if (minDist <= STEP * 0.65) {
-        onCellClick(bestRow, bestCol);
-      }
-    }
-
-    function onCellClick(r, c) {
-      var coord = COLS[c] + (9 - r);
-
-      if (currentTab === 'create') {
-        if (pickingSlot !== null) {
-          var coordInput = document.getElementById("solCoord_" + pickingSlot);
-          if (coordInput) coordInput.value = coord;
-          stopPicking();
-          return;
-        }
-
-        board[r][c] = (board[r][c] + 1) % 3;
-        renderBoard();
-        autoDetectTurnFromStones();
-        return;
-      }
-
-      if (currentTab === 'solve') {
-        if (answered) return;
-        var q = questions[currentIdx];
-        if (!q || !q.solutions) return;
-
-        var hitSol = null;
-        for (var i = 0; i < q.solutions.length; i++) {
-          if (q.solutions[i].coord && q.solutions[i].coord.toUpperCase() === coord) {
-            hitSol = q.solutions[i];
-            break;
-          }
-        }
-
-        var fbBox = document.getElementById('feedbackBox');
-        var fbTitle = document.getElementById('feedbackTitle');
-        var fbDetail = document.getElementById('feedbackDetail');
-
-        if (hitSol) {
-          playStoneSound(true);
-          answered = true;
-          board[r][c] = (currentTurn === 'B') ? 1 : 2;
-          renderBoard();
-
-          fbTitle.innerHTML = '⭕ 正解！ <span style="font-size:0.85rem; color:#1e293b; font-weight:700;">(' + hitSol.coord + ' ' + (hitSol.name || '') + ')</span>';
-          fbTitle.className = 'feedback-title correct';
-
-          var html = '<div class="sol-card active-sol">' +
-            '<div style="font-weight:700; display:flex; justify-content:space-between;">' +
-              '<span>打った手: ' + hitSol.coord + ' [' + (hitSol.name || '正解') + ']</span>' +
-              '<span style="color:#2563eb; font-weight:800;">' + (hitSol.lead || '') + '</span>' +
-            '</div>' +
-            '<div style="margin-top:4px; font-size:0.8rem; color:#334155; white-space:pre-wrap;">' + (hitSol.comment || '解説なし') + '</div>' +
-          '</div>';
-
-          var otherSols = [];
-          for (var j = 0; j < q.solutions.length; j++) {
-            if (q.solutions[j].coord && q.solutions[j].coord.toUpperCase() !== coord) {
-              otherSols.push(q.solutions[j]);
-            }
-          }
-
-          if (otherSols.length > 0) {
-            html += '<div style="font-size:0.75rem; font-weight:700; color:#64748b; margin-top:6px;">その他の候補手:</div>';
-            for (var k = 0; k < otherSols.length; k++) {
-              var s = otherSols[k];
-              html += '<div class="sol-card" style="margin-top:4px;">' +
-                '<div style="font-weight:700; display:flex; justify-content:space-between;">' +
-                  '<span>' + s.coord + ' [' + (s.name || '') + ']</span>' +
-                  '<span style="color:#64748b;">' + (s.lead || '') + '</span>' +
-                '</div>' +
-                '<div style="margin-top:2px; font-size:0.75rem; color:#64748b;">' + (s.comment || '') + '</div>' +
-              '</div>';
-            }
-          }
-
-          fbDetail.innerHTML = html;
-          fbBox.classList.add('show');
-        } else {
-          playStoneSound(false);
-          fbTitle.textContent = '❌ 不正解 (' + coord + ')';
-          fbTitle.className = 'feedback-title wrong';
-          fbDetail.innerHTML = '<span style="font-size:0.8rem; color:#64748b;">最善手・有力手ではありません。</span>';
-          fbBox.classList.add('show');
-        }
-      }
-    }
-
-    function init() {
-      canvas = document.getElementById('boardCanvas');
-      canvas.addEventListener('click', handleCanvasClick);
-      canvas.addEventListener('touchstart', function(e) {
-        e.preventDefault();
-        handleCanvasClick(e);
-      }, { passive: false });
-
-      loadStorage();
-      renderSolutionsEditor();
-      loadQuestion(0);
-      updateListUI();
-    }
-
-    function loadStorage() {
-      try {
-        var data = localStorage.getItem(STORAGE_KEY);
-        if (data) {
-          var parsed = JSON.parse(data);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            questions = parsed;
-          }
-        }
-      } catch(e) {}
-    }
-
-    function saveStorage() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
-      } catch(e) {}
-      updateListUI();
-    }
-
-    function setTab(tab) {
-      currentTab = tab;
-      var buttons = document.querySelectorAll('.tab-btn');
-      for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('active');
-      document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
-
-      document.getElementById('editorCard').style.display = (tab === 'create') ? 'flex' : 'none';
-      document.getElementById('listCard').style.display = (tab === 'list') ? 'flex' : 'none';
-      document.getElementById('stickyNav').style.display = (tab === 'solve') ? 'flex' : 'none';
-      document.getElementById('feedbackBox').classList.remove('show');
-
-      if (tab === 'solve') {
-        if (questions[currentIdx]) loadQuestion(currentIdx);
-      } else if (tab === 'create') {
-        if (editingQuestionId === null) {
-          resetEditorForm();
-        }
-        renderBoard();
-      } else if (tab === 'list') {
-        updateListUI();
-      }
-    }
-
-    function loadQuestion(idx) {
-      if (!questions || questions.length === 0) return;
-      currentIdx = (idx + questions.length) % questions.length;
-      var q = questions[currentIdx];
-      if (!q) return;
-
-      board = JSON.parse(JSON.stringify(q.board));
-      prisoners = { B: (q.prisoners && q.prisoners.B) || 0, W: (q.prisoners && q.prisoners.W) || 0 };
-      currentTurn = q.turn || 'B';
-      answered = false;
-
-      var badge = document.getElementById('turnBadge');
-      if (badge) {
-        badge.textContent = (currentTurn === 'B') ? '黒番' : '白番';
-        badge.className = 'badge-turn' + (currentTurn === 'W' ? ' white' : '');
-      }
-      var moveCountEl = document.getElementById('moveCountText');
-      if (moveCountEl) moveCountEl.textContent = (q.moveCount || 45) + '手目';
-
-      var capB = document.getElementById('capBlack');
-      var capW = document.getElementById('capWhite');
-      if (capB) capB.textContent = prisoners.B;
-      if (capW) capW.textContent = prisoners.W;
-
-      var fbBox = document.getElementById('feedbackBox');
-      if (fbBox) fbBox.classList.remove('show');
-
-      renderBoard();
-    }
-
-    function prevQuestion() {
-      if (questions.length === 0) return;
-      loadQuestion(currentIdx - 1);
-    }
-
-    function nextQuestion() {
-      if (questions.length === 0) return;
-      loadQuestion(currentIdx + 1);
-    }
-
-    function randomQuestion() {
-      if (questions.length === 0) return;
-      var nextIdx = Math.floor(Math.random() * questions.length);
-      loadQuestion(nextIdx);
-    }
-
-    function renderSolutionsEditor() {
-      var container = document.getElementById('solutionsEditorList');
-      if (!container) return;
-      container.innerHTML = '';
-      for (var i = 0; i < 5; i++) {
-        var div = document.createElement('div');
-        div.className = 'sol-editor-item';
-        div.innerHTML = '<div class="sol-editor-header">' +
-            '<span>候補 ' + (i + 1) + '</span>' +
-            '<div style="display:flex; gap:4px; align-items:center;">' +
-              '<input type="text" id="solCoord_' + i + '" class="input-text" style="width:46px; text-transform:uppercase; font-weight:700;" placeholder="D3">' +
-              '<button class="pick-btn" id="pickBtn_' + i + '" onclick="startPicking(' + i + ')">指定</button>' +
-            '</div>' +
-          '</div>' +
-          '<div style="display:flex; gap:6px;">' +
-            '<input type="text" id="solName_' + i + '" class="input-text" style="flex:1;" placeholder="評価 (例: 最善手)">' +
-            '<div class="stepper-wrap">' +
-              '<button class="step-btn" onclick="stepLead(' + i + ', 1.0)">+1.0</button>' +
-              '<button class="step-btn" onclick="stepLead(' + i + ', 0.5)">+0.5</button>' +
-              '<input type="text" id="solLead_' + i + '" class="step-input" value="+0.0">' +
-              '<button class="step-btn" onclick="stepLead(' + i + ', -0.5)">-0.5</button>' +
-              '<button class="step-btn" onclick="stepLead(' + i + ', -1.0)">-1.0</button>' +
-            '</div>' +
-          '</div>' +
-          '<textarea id="solComment_' + i + '" class="input-text" rows="2" placeholder="解説・変化図メモ"></textarea>';
-        container.appendChild(div);
-      }
-    }
-
-    function startPicking(slot) {
-      if (pickingSlot === slot) {
-        stopPicking();
-        return;
-      }
-      stopPicking();
-      pickingSlot = slot;
-      var btn = document.getElementById("pickBtn_" + slot);
-      if (btn) {
-        btn.classList.add('active');
-        btn.innerHTML = '盤面タップ';
-      }
-    }
-
-    function stopPicking() {
-      if (pickingSlot !== null) {
-        var btn = document.getElementById("pickBtn_" + pickingSlot);
-        if (btn) {
-          btn.classList.remove('active');
-          btn.innerHTML = '指定';
-        }
-      }
-      pickingSlot = null;
-    }
-
-    function stepLead(slot, delta) {
-      var input = document.getElementById("solLead_" + slot);
-      if (!input) return;
-      var val = parseFloat(input.value) || 0.0;
-      val = Math.round((val + delta) * 10) / 10;
-      input.value = (val >= 0 ? '+' : '') + val.toFixed(1);
-    }
-
-    function stepVal(id, delta) {
-      var input = document.getElementById(id);
-      if (!input) return;
-      var val = parseInt(input.value) || 0;
-      input.value = Math.max(0, val + delta);
-    }
-
-    function syncTurnAndMove(fromTurnSelect) {
-      var turnSel = document.getElementById('qTurn');
-      var moveInp = document.getElementById('qMoveCount');
-      if (fromTurnSelect) {
-        var mv = parseInt(moveInp.value) || 1;
-        if (turnSel.value === 'B' && mv % 2 === 0) moveInp.value = mv + 1;
-        if (turnSel.value === 'W' && mv % 2 === 1) moveInp.value = mv + 1;
-      } else {
-        var mv2 = parseInt(moveInp.value) || 1;
-        turnSel.value = (mv2 % 2 === 1) ? 'B' : 'W';
-      }
-    }
-
-    function autoDetectTurnFromStones() {
-      var bCount = 0, wCount = 0;
-      for (var r = 0; r < SIZE; r++) {
-        for (var c = 0; c < SIZE; c++) {
-          if (board[r][c] === 1) bCount++;
-          if (board[r][c] === 2) wCount++;
-        }
-      }
-      var turnSel = document.getElementById('qTurn');
-      if (bCount === wCount) {
-        turnSel.value = 'B';
-      } else if (bCount > wCount) {
-        turnSel.value = 'W';
-      }
-      syncTurnAndMove(true);
-    }
-
-    function clearBoardStones() {
-      board = [
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0]
-      ];
-      renderBoard();
-    }
-
-    function saveCurrentQuestion(forceAsNew) {
-      var title = document.getElementById('qTitle').value.trim() || "無題の問題";
-      var turn = document.getElementById('qTurn').value;
-      var moveCount = parseInt(document.getElementById('qMoveCount').value) || 45;
-      var capB = parseInt(document.getElementById('qCapB').value) || 0;
-      var capW = parseInt(document.getElementById('qCapW').value) || 0;
-
-      var sols = [];
-      for (var i = 0; i < 5; i++) {
-        var coord = document.getElementById("solCoord_" + i).value.trim().toUpperCase();
-        if (coord) {
-          sols.push({
-            coord: coord,
-            name: document.getElementById("solName_" + i).value.trim(),
-            lead: document.getElementById("solLead_" + i).value.trim(),
-            comment: document.getElementById("solComment_" + i).value.trim()
-          });
-        }
-      }
-
-      if (sols.length === 0) {
-        alert("少なくとも1つの正解手（座標）を指定してください。");
-        return;
-      }
-
-      if (!forceAsNew && editingQuestionId !== null) {
-        var qIdx = -1;
-        for (var j = 0; j < questions.length; j++) {
-          if (questions[j].id === editingQuestionId) {
-            qIdx = j;
-            break;
-          }
-        }
-        if (qIdx !== -1) {
-          questions[qIdx] = {
-            id: editingQuestionId,
-            title: title,
-            turn: turn,
-            moveCount: moveCount,
-            prisoners: { B: capB, W: capW },
-            board: JSON.parse(JSON.stringify(board)),
-            solutions: sols
-          };
-          currentIdx = qIdx;
-        }
-      } else {
-        var newId = Date.now();
-        questions.push({
-          id: newId,
-          title: title,
-          turn: turn,
-          moveCount: moveCount,
-          prisoners: { B: capB, W: capW },
-          board: JSON.parse(JSON.stringify(board)),
-          solutions: sols
-        });
-        currentIdx = questions.length - 1;
-      }
-
-      saveStorage();
-      alert(forceAsNew || editingQuestionId === null ? "問題を追加登録しました！" : "問題を上書き更新しました！");
-      setTab('solve');
-    }
-
-    function editQuestion(id) {
-      var q = null;
-      for (var j = 0; j < questions.length; j++) {
-        if (questions[j].id === id) {
-          q = questions[j];
-          break;
-        }
-      }
-      if (!q) return;
-
-      editingQuestionId = q.id;
-      board = JSON.parse(JSON.stringify(q.board));
-
-      document.getElementById('qTitle').value = q.title || '';
-      document.getElementById('qTurn').value = q.turn || 'B';
-      document.getElementById('qMoveCount').value = q.moveCount || 45;
-      document.getElementById('qCapB').value = (q.prisoners && q.prisoners.B) || 0;
-      document.getElementById('qCapW').value = (q.prisoners && q.prisoners.W) || 0;
-
-      for (var i = 0; i < 5; i++) {
-        var sol = q.solutions && q.solutions[i];
-        document.getElementById("solCoord_" + i).value = sol ? sol.coord : '';
-        document.getElementById("solName_" + i).value = sol ? sol.name : '';
-        document.getElementById("solLead_" + i).value = sol ? sol.lead : '+0.0';
-        document.getElementById("solComment_" + i).value = sol ? sol.comment : '';
-      }
-
-      document.getElementById('editBanner').classList.add('show');
-      document.getElementById('editBannerText').innerHTML = '問題「' + q.title + '」を編集中 (上書き保存)';
-      document.getElementById('saveBtn').innerHTML = '上書き保存';
-      document.getElementById('saveAsNewBtn').style.display = 'inline-flex';
-
-      setTab('create');
-    }
-
-    function cancelEditing() {
-      resetEditorForm();
-      renderBoard();
-    }
-
-    function resetEditorForm() {
-      editingQuestionId = null;
-      document.getElementById('editBanner').classList.remove('show');
-      document.getElementById('saveBtn').innerHTML = '保存';
-      document.getElementById('saveAsNewBtn').style.display = 'none';
-
-      document.getElementById('qTitle').value = '';
-      document.getElementById('qMoveCount').value = 45;
-      document.getElementById('qTurn').value = 'B';
-      document.getElementById('qCapB').value = 0;
-      document.getElementById('qCapW').value = 0;
-      for (var i = 0; i < 5; i++) {
-        document.getElementById("solCoord_" + i).value = '';
-        document.getElementById("solName_" + i).value = '';
-        document.getElementById("solLead_" + i).value = '+0.0';
-        document.getElementById("solComment_" + i).value = '';
-      }
-      stopPicking();
-    }
-
-    function deleteQuestion(id) {
-      if (!confirm("この問題を削除しますか？")) return;
-      var newQ = [];
-      for (var i = 0; i < questions.length; i++) {
-        if (questions[i].id !== id) newQ.push(questions[i]);
-      }
-      questions = newQ;
-      if (editingQuestionId === id) cancelEditing();
-      if (currentIdx >= questions.length) currentIdx = Math.max(0, questions.length - 1);
-      saveStorage();
-      updateListUI();
-    }
-
-    function updateListUI() {
-      var countEl = document.getElementById('totalQCount');
-      if (countEl) countEl.textContent = questions.length;
-      var container = document.getElementById('questionsContainer');
-      if (!container) return;
-      container.innerHTML = '';
-
-      for (var idx = 0; idx < questions.length; idx++) {
-        (function(q, i) {
-          var item = document.createElement('div');
-          item.className = 'q-item';
-          var best = (q.solutions && q.solutions[0]) ? q.solutions[0].coord : '-';
-          item.innerHTML = '<div>' +
-              '<div style="font-weight:700;">#' + (i + 1) + ' ' + q.title + '</div>' +
-              '<div style="font-size:0.75rem; color:#64748b;">' + (q.turn === 'B' ? '黒番' : '白番') + ' / ' + (q.moveCount || '-') + '手目 / 正解: ' + best + ' (' + (q.solutions ? q.solutions.length : 0) + '択)</div>' +
-            '</div>' +
-            '<div style="display:flex; gap:4px;">' +
-              '<button class="pick-btn" onclick="editQuestion(' + q.id + ')">編集</button>' +
-              '<button class="pick-btn" style="color:#ef4444;" onclick="deleteQuestion(' + q.id + ')">削除</button>' +
-            '</div>';
-          container.appendChild(item);
-        })(questions[idx], idx);
-      }
-    }
-
-    function exportJSON() {
-      var blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = "go9_questions_" + new Date().toISOString().slice(0,10) + ".json";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function importJSON() {
-      document.getElementById('jsonFileInput').click();
-    }
-
-    function handleFileSelect(e) {
-      var file = e.target.files[0];
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function(evt) {
-        try {
-          var parsed = JSON.parse(evt.target.result);
-          if (Array.isArray(parsed)) {
-            questions = parsed;
-            saveStorage();
-            alert(parsed.length + "問のデータを読み込みました！");
-            setTab('list');
-          }
-        } catch(err) {
-          alert("JSONの読み込みに失敗しました。ファイル形式を確認してください。");
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    window.onload = init;
-  </script>
-</body>
-</html>
+        <div class="form-group
