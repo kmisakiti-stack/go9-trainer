@@ -527,7 +527,6 @@
     var pickingSlot = null;
     var editingQuestionId = null;
 
-    // 編集モード設定
     var editMode = 'alternate';
     var nextEditColor = 1;
     var editHistory = [];
@@ -574,34 +573,98 @@
     var currentTurn = 'B';
     var answered = false;
 
-    // 効果音
+    // 情報バー（手番・手数・アゲハマ）更新
+    function updateInfoBar(turn, moveCount, capB, capW) {
+      var badge = document.getElementById('turnBadge');
+      if (badge) {
+        badge.textContent = (turn === 'B') ? '黒番' : '白番';
+        badge.className = 'badge-turn' + (turn === 'W' ? ' white' : '');
+      }
+      var moveCountEl = document.getElementById('moveCountText');
+      if (moveCountEl) {
+        moveCountEl.textContent = (moveCount || 1) + '手目';
+      }
+      if (capB !== undefined) {
+        var elB = document.getElementById('capBlack');
+        if (elB) elB.textContent = capB;
+      }
+      if (capW !== undefined) {
+        var elW = document.getElementById('capWhite');
+        if (elW) elW.textContent = capW;
+      }
+    }
+
+    // リアルな碁石の打音合成エンジン（Web Audio API）
     var audioCtx = null;
     function playStoneSound(isCorrect) {
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        var osc = audioCtx.createOscillator();
-        var gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
         var now = audioCtx.currentTime;
 
         if (isCorrect) {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(460, now);
-          osc.frequency.exponentialRampToValueAtTime(200, now + 0.08);
-          gain.gain.setValueAtTime(0.7, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-          osc.start(now);
-          osc.stop(now + 0.08);
-        } else {
+          // 碁石が盤に打ち下ろされた「パシッ」という乾いた硬い衝撃音
+
+          // 1. ノイズバースト（石と盤が触れた瞬間のアタック音「パッ」）
+          var bufferSize = Math.floor(audioCtx.sampleRate * 0.025); // 25ms
+          var buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+          var data = buffer.getChannelData(0);
+          for (var i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+          }
+          var noise = audioCtx.createBufferSource();
+          noise.buffer = buffer;
+
+          var noiseFilter = audioCtx.createBiquadFilter();
+          noiseFilter.type = 'bandpass';
+          noiseFilter.frequency.setValueAtTime(1800, now);
+          noiseFilter.Q.setValueAtTime(1.5, now);
+
+          var noiseGain = audioCtx.createGain();
+          noiseGain.gain.setValueAtTime(0.85, now);
+          noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+          noise.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          noiseGain.connect(audioCtx.destination);
+          noise.start(now);
+
+          // 2. 盤と石の共鳴（「コン」という低・中音の響き）
+          var osc = audioCtx.createOscillator();
+          var oscGain = audioCtx.createGain();
+
           osc.type = 'triangle';
-          osc.frequency.setValueAtTime(220, now);
-          osc.frequency.setValueAtTime(190, now + 0.12);
-          gain.gain.setValueAtTime(0.4, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.frequency.setValueAtTime(650, now);
+          osc.frequency.exponentialRampToValueAtTime(280, now + 0.05);
+
+          oscGain.gain.setValueAtTime(0.7, now);
+          oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+          osc.connect(oscGain);
+          oscGain.connect(audioCtx.destination);
           osc.start(now);
-          osc.stop(now + 0.2);
+          osc.stop(now + 0.06);
+
+        } else {
+          // 不正解音：濁った鈍い打音（ボソッ）
+          var oscBad = audioCtx.createOscillator();
+          var gainBad = audioCtx.createGain();
+          oscBad.type = 'sawtooth';
+          oscBad.frequency.setValueAtTime(160, now);
+          oscBad.frequency.linearRampToValueAtTime(110, now + 0.12);
+
+          var filterBad = audioCtx.createBiquadFilter();
+          filterBad.type = 'lowpass';
+          filterBad.frequency.setValueAtTime(350, now);
+
+          gainBad.gain.setValueAtTime(0.35, now);
+          gainBad.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+          oscBad.connect(filterBad);
+          filterBad.connect(gainBad);
+          gainBad.connect(audioCtx.destination);
+          oscBad.start(now);
+          oscBad.stop(now + 0.15);
         }
       } catch (e) {}
     }
@@ -801,11 +864,14 @@
           } else {
             board[r][c] = nextEditColor;
             nextEditColor = (nextEditColor === 1) ? 2 : 1;
+            playStoneSound(true);
           }
         } else if (editMode === 'black') {
           board[r][c] = (board[r][c] === 1) ? 0 : 1;
+          if (board[r][c] === 1) playStoneSound(true);
         } else if (editMode === 'white') {
           board[r][c] = (board[r][c] === 2) ? 0 : 2;
+          if (board[r][c] === 2) playStoneSound(true);
         } else if (editMode === 'erase') {
           board[r][c] = 0;
         }
@@ -950,18 +1016,7 @@
       currentTurn = q.turn || 'B';
       answered = false;
 
-      var badge = document.getElementById('turnBadge');
-      if (badge) {
-        badge.textContent = (currentTurn === 'B') ? '黒番' : '白番';
-        badge.className = 'badge-turn' + (currentTurn === 'W' ? ' white' : '');
-      }
-      var moveCountEl = document.getElementById('moveCountText');
-      if (moveCountEl) moveCountEl.textContent = (q.moveCount || 45) + '手目';
-
-      var capB = document.getElementById('capBlack');
-      var capW = document.getElementById('capWhite');
-      if (capB) capB.textContent = prisoners.B;
-      if (capW) capW.textContent = prisoners.W;
+      updateInfoBar(currentTurn, q.moveCount || 45, prisoners.B, prisoners.W);
 
       var fbBox = document.getElementById('feedbackBox');
       if (fbBox) fbBox.classList.remove('show');
@@ -1054,6 +1109,11 @@
       if (!input) return;
       var val = parseInt(input.value) || 0;
       input.value = Math.max(0, val + delta);
+      var capB = parseInt(document.getElementById('qCapB').value) || 0;
+      var capW = parseInt(document.getElementById('qCapW').value) || 0;
+      var turnVal = document.getElementById('qTurn').value;
+      var mvVal = parseInt(document.getElementById('qMoveCount').value) || 1;
+      updateInfoBar(turnVal, mvVal, capB, capW);
     }
 
     function syncTurnAndMove(fromTurnSelect) {
@@ -1067,9 +1127,11 @@
         var mv2 = parseInt(moveInp.value) || 1;
         turnSel.value = (mv2 % 2 === 1) ? 'B' : 'W';
       }
+      var capB = parseInt(document.getElementById('qCapB').value) || 0;
+      var capW = parseInt(document.getElementById('qCapW').value) || 0;
+      updateInfoBar(turnSel.value, parseInt(moveInp.value) || 1, capB, capW);
     }
 
-    // 盤上の石の数から手数・手番を自動計算
     function autoDetectTurnFromStones() {
       var bCount = 0, wCount = 0;
       for (var r = 0; r < SIZE; r++) {
@@ -1084,19 +1146,26 @@
 
       if (moveInp) moveInp.value = Math.max(1, totalStones + 1);
 
+      var turnVal = 'B';
       if (bCount === wCount) {
         if (turnSel) turnSel.value = 'B';
         nextEditColor = 1;
+        turnVal = 'B';
       } else if (bCount > wCount) {
         if (turnSel) turnSel.value = 'W';
         nextEditColor = 2;
+        turnVal = 'W';
       } else {
         if (turnSel) turnSel.value = 'B';
         nextEditColor = 1;
+        turnVal = 'B';
       }
+      var mvVal = moveInp ? parseInt(moveInp.value) : 1;
+      var capB = parseInt(document.getElementById('qCapB').value) || 0;
+      var capW = parseInt(document.getElementById('qCapW').value) || 0;
+      updateInfoBar(turnVal, mvVal, capB, capW);
     }
 
-    // 盤面全消去：石も手数も初期状態（1手目・黒番）に戻す
     function clearBoardStones() {
       if (!confirm("盤面の石をすべて消去し、1手目に戻しますか？")) return;
       editHistory.push({
@@ -1119,6 +1188,9 @@
       nextEditColor = 1;
       document.getElementById('qMoveCount').value = 1;
       document.getElementById('qTurn').value = 'B';
+      var capB = parseInt(document.getElementById('qCapB').value) || 0;
+      var capW = parseInt(document.getElementById('qCapW').value) || 0;
+      updateInfoBar('B', 1, capB, capW);
       renderBoard();
     }
 
@@ -1206,6 +1278,7 @@
       document.getElementById('qMoveCount').value = q.moveCount || 1;
       document.getElementById('qCapB').value = (q.prisoners && q.prisoners.B) || 0;
       document.getElementById('qCapW').value = (q.prisoners && q.prisoners.W) || 0;
+      updateInfoBar(q.turn || 'B', q.moveCount || 1, (q.prisoners && q.prisoners.B) || 0, (q.prisoners && q.prisoners.W) || 0);
 
       for (var i = 0; i < 5; i++) {
         var sol = q.solutions && q.solutions[i];
@@ -1236,7 +1309,6 @@
       document.getElementById('saveBtn').innerHTML = '保存';
       document.getElementById('saveAsNewBtn').style.display = 'none';
 
-      // 盤面をまっさらにリセット
       board = [
         [0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0],
@@ -1255,6 +1327,8 @@
       document.getElementById('qTurn').value = 'B';
       document.getElementById('qCapB').value = 0;
       document.getElementById('qCapW').value = 0;
+      updateInfoBar('B', 1, 0, 0);
+
       for (var i = 0; i < 5; i++) {
         document.getElementById("solCoord_" + i).value = '';
         document.getElementById("solName_" + i).value = defaultCandidateNames[i] || "";
