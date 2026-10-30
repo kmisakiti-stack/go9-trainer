@@ -33,10 +33,31 @@
       background: #1e293b;
       border-bottom: 1px solid #334155;
     }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
     .app-title {
       font-size: 1.05rem;
       font-weight: 800;
       color: #f8fafc;
+    }
+    .sound-btn {
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 4px 8px;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sound-btn.muted {
+      color: #64748b;
+      border-color: #334155;
     }
     .tabs {
       display: flex;
@@ -247,6 +268,9 @@
       color: #f8fafc;
       user-select: auto;
     }
+    textarea.input-text {
+      resize: vertical;
+    }
 
     /* 編集ツールバー */
     .edit-toolbar {
@@ -297,6 +321,30 @@
       flex-direction: column;
       gap: 6px;
     }
+    .sol-editor-item.extra-candidate {
+      display: none;
+    }
+    .sol-editor-item.extra-candidate.show {
+      display: flex;
+    }
+    .toggle-extra-btn {
+      width: 100%;
+      padding: 8px;
+      background: #0f172a;
+      border: 1px dashed #475569;
+      border-radius: 6px;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 2px;
+    }
+    .toggle-extra-btn:hover {
+      background: #1e293b;
+      color: #cbd5e1;
+    }
+
     .sol-editor-header {
       display: flex;
       justify-content: space-between;
@@ -384,7 +432,10 @@
 <body>
 
   <header>
-    <div class="app-title">9路盤 次の一手</div>
+    <div class="header-left">
+      <div class="app-title">9路盤 次の一手</div>
+      <button class="sound-btn" id="soundToggleBtn" onclick="toggleSound()" title="音のオン/オフ">🔊</button>
+    </div>
     <div class="tabs">
       <button class="tab-btn active" id="tabSolve" onclick="setTab('solve')">解く</button>
       <button class="tab-btn" id="tabCreate" onclick="setTab('create')">作成</button>
@@ -480,6 +531,8 @@
 
       <div id="solutionsEditorList" style="display:flex; flex-direction:column; gap:6px;"></div>
 
+      <button class="toggle-extra-btn" id="toggleExtraBtn" onclick="toggleExtraCandidates()">＋ 候補手3〜5を表示する</button>
+
       <div class="action-row">
         <button class="btn btn-primary" onclick="saveCurrentQuestion(false)" id="saveBtn">保存</button>
         <button class="btn btn-secondary" onclick="saveCurrentQuestion(true)" id="saveAsNewBtn" style="display:none;">別名で新規追加</button>
@@ -521,6 +574,7 @@
     var COLS = ['A','B','C','D','E','F','G','H','J'];
     var SIZE = 9;
     var STORAGE_KEY = 'go9_quiz_data_v3';
+    var SOUND_KEY = 'go9_sound_enabled';
 
     var currentTab = 'solve';
     var currentIdx = 0;
@@ -530,6 +584,8 @@
     var editMode = 'alternate';
     var nextEditColor = 1;
     var editHistory = [];
+    var soundEnabled = true;
+    var showExtraCandidates = false;
 
     var defaultCandidateNames = ["最善手", "次善手", "", "", ""];
 
@@ -594,19 +650,50 @@
       }
     }
 
+    // 音声オン／オフ切り替え
+    function initSoundSetting() {
+      try {
+        var saved = localStorage.getItem(SOUND_KEY);
+        if (saved !== null) {
+          soundEnabled = (saved === 'true');
+        }
+      } catch(e) {}
+      updateSoundUI();
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      try {
+        localStorage.setItem(SOUND_KEY, String(soundEnabled));
+      } catch(e) {}
+      updateSoundUI();
+    }
+
+    function updateSoundUI() {
+      var btn = document.getElementById('soundToggleBtn');
+      if (btn) {
+        btn.innerHTML = soundEnabled ? '🔊' : '🔇';
+        if (soundEnabled) {
+          btn.classList.remove('muted');
+          btn.title = '音をミュートする';
+        } else {
+          btn.classList.add('muted');
+          btn.title = '音を鳴らす';
+        }
+      }
+    }
+
     // リアルな碁石の打音合成エンジン（Web Audio API）
     var audioCtx = null;
     function playStoneSound(isCorrect) {
+      if (!soundEnabled) return;
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
         var now = audioCtx.currentTime;
 
         if (isCorrect) {
-          // 碁石が盤に打ち下ろされた「パシッ」という乾いた硬い衝撃音
-
-          // 1. ノイズバースト（石と盤が触れた瞬間のアタック音「パッ」）
-          var bufferSize = Math.floor(audioCtx.sampleRate * 0.025); // 25ms
+          var bufferSize = Math.floor(audioCtx.sampleRate * 0.025);
           var buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
           var data = buffer.getChannelData(0);
           for (var i = 0; i < bufferSize; i++) {
@@ -629,7 +716,6 @@
           noiseGain.connect(audioCtx.destination);
           noise.start(now);
 
-          // 2. 盤と石の共鳴（「コン」という低・中音の響き）
           var osc = audioCtx.createOscillator();
           var oscGain = audioCtx.createGain();
 
@@ -644,9 +730,7 @@
           oscGain.connect(audioCtx.destination);
           osc.start(now);
           osc.stop(now + 0.06);
-
         } else {
-          // 不正解音：濁った鈍い打音（ボソッ）
           var oscBad = audioCtx.createOscillator();
           var gainBad = audioCtx.createGain();
           oscBad.type = 'sawtooth';
@@ -956,6 +1040,7 @@
         handleCanvasClick(e);
       }, { passive: false });
 
+      initSoundSetting();
       loadStorage();
       renderSolutionsEditor();
       loadQuestion(0);
@@ -1047,8 +1132,10 @@
       for (var i = 0; i < 5; i++) {
         var labelTitle = (i === 0) ? "最善手 (必須)" : ((i === 1) ? "次善手" : ("候補手 " + (i + 1)));
         var initVal = defaultCandidateNames[i] || "";
+        var extraClass = (i >= 2) ? " extra-candidate" : "";
         var div = document.createElement('div');
-        div.className = 'sol-editor-item';
+        div.className = 'sol-editor-item' + extraClass;
+        div.id = 'solItem_' + i;
         div.innerHTML = '<div class="sol-editor-header">' +
             '<span>' + labelTitle + '</span>' +
             '<div style="display:flex; gap:4px; align-items:center;">' +
@@ -1068,6 +1155,27 @@
           '</div>' +
           '<textarea id="solComment_' + i + '" class="input-text" rows="2" placeholder="解説・変化図メモ"></textarea>';
         container.appendChild(div);
+      }
+    }
+
+    function toggleExtraCandidates(forceState) {
+      if (forceState !== undefined) {
+        showExtraCandidates = forceState;
+      } else {
+        showExtraCandidates = !showExtraCandidates;
+      }
+
+      for (var i = 2; i < 5; i++) {
+        var el = document.getElementById('solItem_' + i);
+        if (el) {
+          if (showExtraCandidates) el.classList.add('show');
+          else el.classList.remove('show');
+        }
+      }
+
+      var btn = document.getElementById('toggleExtraBtn');
+      if (btn) {
+        btn.textContent = showExtraCandidates ? '▲ 候補手3〜5を閉じる' : '＋ 候補手3〜5を表示する';
       }
     }
 
@@ -1280,13 +1388,24 @@
       document.getElementById('qCapW').value = (q.prisoners && q.prisoners.W) || 0;
       updateInfoBar(q.turn || 'B', q.moveCount || 1, (q.prisoners && q.prisoners.B) || 0, (q.prisoners && q.prisoners.W) || 0);
 
+      var hasExtra = false;
       for (var i = 0; i < 5; i++) {
         var sol = q.solutions && q.solutions[i];
         document.getElementById("solCoord_" + i).value = sol ? sol.coord : '';
         document.getElementById("solName_" + i).value = sol ? sol.name : (defaultCandidateNames[i] || "");
         document.getElementById("solLead_" + i).value = sol ? sol.lead : '+0.0';
-        document.getElementById("solComment_" + i).value = sol ? sol.comment : '';
+        
+        var commentEl = document.getElementById("solComment_" + i);
+        commentEl.value = sol ? sol.comment : '';
+        commentEl.style.height = ''; // リセット
+
+        if (i >= 2 && sol && sol.coord) {
+          hasExtra = true;
+        }
       }
+
+      // 候補手3〜5にデータがある場合は自動で展開、なければ閉じる
+      toggleExtraCandidates(hasExtra);
 
       document.getElementById('editBanner').classList.add('show');
       document.getElementById('editBannerText').innerHTML = '問題「' + q.title + '」を編集中 (上書き保存)';
@@ -1329,11 +1448,18 @@
       document.getElementById('qCapW').value = 0;
       updateInfoBar('B', 1, 0, 0);
 
+      // 候補手3〜5はデフォルトで閉じる
+      toggleExtraCandidates(false);
+
       for (var i = 0; i < 5; i++) {
         document.getElementById("solCoord_" + i).value = '';
         document.getElementById("solName_" + i).value = defaultCandidateNames[i] || "";
         document.getElementById("solLead_" + i).value = '+0.0';
-        document.getElementById("solComment_" + i).value = '';
+        
+        // メモ欄（textarea）のサイズ・高さを初期状態にリセット
+        var commentEl = document.getElementById("solComment_" + i);
+        commentEl.value = '';
+        commentEl.style.height = '';
       }
       stopPicking();
     }
