@@ -613,7 +613,7 @@
     var editMode = 'alternate';
     var nextEditColor = 1;
     var editHistory = [];
-    var soundEnabled = true;
+    var soundMode = 'cat'; // 'cat' (猫鳴き声) | 'normal' (リアル碁石音) | 'mute' (消音)
 
     // ブラウザの音声自動再生ブロック（User Activation制限）を確実に解除するアンロック処理
     function unlockAudio() {
@@ -624,7 +624,6 @@
         if (audioCtx.state === 'suspended') {
           audioCtx.resume();
         }
-        // ダミーの無音を極短時間再生してロックを完全に解除
         var buf = audioCtx.createBuffer(1, 1, 22050);
         var src = audioCtx.createBufferSource();
         src.buffer = buf;
@@ -633,10 +632,47 @@
       } catch(e) {}
     }
 
-    // 画面の初回タップ/クリックで確実に音声をアンロック
     window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
     window.addEventListener('touchend', unlockAudio, { once: true, passive: true });
     window.addEventListener('click', unlockAudio, { once: true });
+
+    // 猫の鳴き声（ニャーオ）物理モデリング合成エンジン
+    function playCatMeow() {
+      try {
+        var now = audioCtx.currentTime;
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        var filter = audioCtx.createBiquadFilter();
+
+        // フォルマントフィルター（猫の「ニャ」共鳴音）
+        filter.type = 'bandpass';
+        filter.Q.setValueAtTime(3.2, now);
+
+        // 周波数エンベロープ（音程: 420Hz -> 780Hz -> 540Hz -> 380Hz）
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(780, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(540, now + 0.35);
+        osc.frequency.exponentialRampToValueAtTime(380, now + 0.55);
+
+        filter.frequency.setValueAtTime(900, now);
+        filter.frequency.exponentialRampToValueAtTime(1600, now + 0.14);
+        filter.frequency.exponentialRampToValueAtTime(800, now + 0.48);
+
+        // 音量エンベロープ
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.38, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.24, now + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.55);
+      } catch(e) {}
+    }
 
     var showExtraCandidates = false;
     var selectedListIdx = -1;
@@ -704,21 +740,31 @@
       }
     }
 
-    // 音声オン／オフ切り替え
+    // 音声モード切り替え: 🐱(猫) ➔ 🔊(通常碁石音) ➔ 🔇(消音)
     function initSoundSetting() {
       try {
         var saved = localStorage.getItem(SOUND_KEY);
-        if (saved !== null) {
-          soundEnabled = (saved === 'true');
+        if (saved !== null && (saved === 'cat' || saved === 'normal' || saved === 'mute')) {
+          soundMode = saved;
+        } else {
+          soundMode = 'cat'; // 最初のお遊びとして猫モードを初期値に設定！
         }
-      } catch(e) {}
+      } catch(e) {
+        soundMode = 'cat';
+      }
       updateSoundUI();
     }
 
     function toggleSound() {
-      soundEnabled = !soundEnabled;
+      if (soundMode === 'cat') {
+        soundMode = 'normal';
+      } else if (soundMode === 'normal') {
+        soundMode = 'mute';
+      } else {
+        soundMode = 'cat';
+      }
       try {
-        localStorage.setItem(SOUND_KEY, String(soundEnabled));
+        localStorage.setItem(SOUND_KEY, soundMode);
       } catch(e) {}
       updateSoundUI();
     }
@@ -726,13 +772,18 @@
     function updateSoundUI() {
       var btn = document.getElementById('soundToggleBtn');
       if (btn) {
-        btn.innerHTML = soundEnabled ? '🔊' : '🔇';
-        if (soundEnabled) {
+        if (soundMode === 'cat') {
+          btn.innerHTML = '🐱';
           btn.classList.remove('muted');
-          btn.title = '音をミュートする';
+          btn.title = '現在のモード: 猫の鳴き声 (タップで碁石音に変更)';
+        } else if (soundMode === 'normal') {
+          btn.innerHTML = '🔊';
+          btn.classList.remove('muted');
+          btn.title = '現在のモード: 通常碁石音 (タップで消音に変更)';
         } else {
+          btn.innerHTML = '🔇';
           btn.classList.add('muted');
-          btn.title = '音を鳴らす';
+          btn.title = '現在のモード: 消音 (タップで猫モードに変更)';
         }
       }
     }
@@ -740,17 +791,25 @@
     // リアルな碁石の打音合成エンジン（Web Audio API）
     var audioCtx = null;
     function playStoneSound(isCorrect) {
-      if (!soundEnabled) return;
+      if (soundMode === 'mute') return;
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') {
           audioCtx.resume().then(function() {
-            doPlaySound(isCorrect);
+            triggerActualSound(isCorrect);
           });
           return;
         }
-        doPlaySound(isCorrect);
+        triggerActualSound(isCorrect);
       } catch (e) {}
+    }
+
+    function triggerActualSound(isCorrect) {
+      if (soundMode === 'cat') {
+        playCatMeow();
+      } else {
+        doPlaySound(isCorrect);
+      }
     }
 
     // 本格碁盤・蛤碁石のリアル着手音合成エンジン（物理モデリング）
