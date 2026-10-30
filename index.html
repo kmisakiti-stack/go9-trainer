@@ -1005,14 +1005,22 @@
       }
     }
 
+    var lastClickTimestamp = 0;
     function handleCanvasClick(e) {
       if (!canvas) return;
+      var now = Date.now();
+      if (now - lastClickTimestamp < 150) return; // 二重タップ防止ガード
+      lastClickTimestamp = now;
+
       var rect = canvas.getBoundingClientRect();
       var clientX = e.clientX;
       var clientY = e.clientY;
       if (e.touches && e.touches.length > 0) {
         clientX = e.touches[0].clientX;
         clientY = e.touches[0].clientY;
+      } else if (e.changedTouches && e.changedTouches.length > 0) {
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
       }
 
       var scaleX = C_SIZE / rect.width;
@@ -1166,23 +1174,29 @@
 
         var placed = 0;
         if (editMode === 'alternate') {
-          if (board[r][c] === nextEditColor) {
+          if (board[r][c] !== 0) {
+            // すでに石がある場所をタップした場合は消去
             board[r][c] = 0;
           } else {
+            // 空いている場所をタップした場合は交互に石を置く
             board[r][c] = nextEditColor;
             placed = nextEditColor;
             nextEditColor = (nextEditColor === 1) ? 2 : 1;
             playStoneSound(true);
           }
         } else if (editMode === 'black') {
-          board[r][c] = (board[r][c] === 1) ? 0 : 1;
           if (board[r][c] === 1) {
+            board[r][c] = 0;
+          } else {
+            board[r][c] = 1;
             placed = 1;
             playStoneSound(true);
           }
         } else if (editMode === 'white') {
-          board[r][c] = (board[r][c] === 2) ? 0 : 2;
           if (board[r][c] === 2) {
+            board[r][c] = 0;
+          } else {
+            board[r][c] = 2;
             placed = 2;
             playStoneSound(true);
           }
