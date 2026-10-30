@@ -636,41 +636,96 @@
     window.addEventListener('touchend', unlockAudio, { once: true, passive: true });
     window.addEventListener('click', unlockAudio, { once: true });
 
-    // 猫の鳴き声（ニャーオ）物理モデリング合成エンジン
+// 高度な猫の鳴き声（ミャ〜オ）音声合成エンジン
     function playCatMeow() {
       try {
         var now = audioCtx.currentTime;
+        var duration = 0.58;
+
+        // 声帯音源（パルス波に近い歪んだノコギリ波）
         var osc = audioCtx.createOscillator();
-        var gain = audioCtx.createGain();
-        var filter = audioCtx.createBiquadFilter();
-
-        // フォルマントフィルター（猫の「ニャ」共鳴音）
-        filter.type = 'bandpass';
-        filter.Q.setValueAtTime(3.2, now);
-
-        // 周波数エンベロープ（音程: 420Hz -> 780Hz -> 540Hz -> 380Hz）
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(420, now);
-        osc.frequency.exponentialRampToValueAtTime(780, now + 0.12);
-        osc.frequency.exponentialRampToValueAtTime(540, now + 0.35);
-        osc.frequency.exponentialRampToValueAtTime(380, now + 0.55);
 
-        filter.frequency.setValueAtTime(900, now);
-        filter.frequency.exponentialRampToValueAtTime(1600, now + 0.14);
-        filter.frequency.exponentialRampToValueAtTime(800, now + 0.48);
+        // ピッチ変化: ん〜(380Hz) -> ニャッ(780Hz) -> ア〜(620Hz) -> オ〜(400Hz)
+        osc.frequency.setValueAtTime(360, now);
+        osc.frequency.exponentialRampToValueAtTime(760, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.32);
+        osc.frequency.exponentialRampToValueAtTime(380, now + duration);
 
-        // 音量エンベロープ
-        gain.gain.setValueAtTime(0.01, now);
-        gain.gain.linearRampToValueAtTime(0.38, now + 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.24, now + 0.3);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        // ビブラート（喉の微小な揺れ）
+        var vib = audioCtx.createOscillator();
+        var vibGain = audioCtx.createGain();
+        vib.frequency.setValueAtTime(5.5, now); // 5.5Hzの揺れ
+        vibGain.gain.setValueAtTime(15, now);
+        vibGain.gain.linearRampToValueAtTime(25, now + 0.25);
+        vibGain.gain.linearRampToValueAtTime(5, now + duration);
+        vib.connect(osc.frequency);
+        vib.start(now);
+        vib.stop(now + duration);
 
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(audioCtx.destination);
+        // 母音フォルマントフィルター群（猫の咽頭・口腔共鳴）
+        // フォルマント1（母音の開閉 [a] -> [o]）
+        var f1 = audioCtx.createBiquadFilter();
+        f1.type = 'bandpass';
+        f1.Q.setValueAtTime(4.0, now);
+        f1.frequency.setValueAtTime(550, now);
+        f1.frequency.linearRampToValueAtTime(950, now + 0.14);
+        f1.frequency.linearRampToValueAtTime(500, now + duration);
+
+        // フォルマント2（鼻にかかった [ja] の鳴き声成分）
+        var f2 = audioCtx.createBiquadFilter();
+        f2.type = 'bandpass';
+        f2.Q.setValueAtTime(4.5, now);
+        f2.frequency.setValueAtTime(1400, now);
+        f2.frequency.linearRampToValueAtTime(2200, now + 0.12);
+        f2.frequency.linearRampToValueAtTime(1100, now + duration);
+
+        // フォルマント3（猫特有の甲高い鈴のような艶）
+        var f3 = audioCtx.createBiquadFilter();
+        f3.type = 'bandpass';
+        f3.Q.setValueAtTime(5.0, now);
+        f3.frequency.setValueAtTime(3100, now);
+
+        // 息の擦れノイズ（立ち上がりの「ニャ」のアタック感）
+        var breathLen = Math.floor(audioCtx.sampleRate * 0.08);
+        var breathBuf = audioCtx.createBuffer(1, breathLen, audioCtx.sampleRate);
+        var bData = breathBuf.getChannelData(0);
+        for (var i = 0; i < breathLen; i++) {
+          bData[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / breathLen);
+        }
+        var breathSrc = audioCtx.createBufferSource();
+        breathSrc.buffer = breathBuf;
+        var breathFilter = audioCtx.createBiquadFilter();
+        breathFilter.type = 'bandpass';
+        breathFilter.frequency.setValueAtTime(2400, now);
+        var breathGain = audioCtx.createGain();
+        breathGain.gain.setValueAtTime(0.08, now);
+        breathGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        breathSrc.connect(breathFilter);
+        breathFilter.connect(breathGain);
+        breathGain.connect(audioCtx.destination);
+        breathSrc.start(now);
+
+        // ミキサー＆音量エンベロープ
+        var masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(0.001, now);
+        masterGain.gain.linearRampToValueAtTime(0.45, now + 0.09);
+        masterGain.gain.exponentialRampToValueAtTime(0.3, now + 0.35);
+        masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        // フォルマント並列接続
+        osc.connect(f1);
+        osc.connect(f2);
+        osc.connect(f3);
+
+        f1.connect(masterGain);
+        f2.connect(masterGain);
+        f3.connect(masterGain);
+
+        masterGain.connect(audioCtx.destination);
 
         osc.start(now);
-        osc.stop(now + 0.55);
+        osc.stop(now + duration);
       } catch(e) {}
     }
 
