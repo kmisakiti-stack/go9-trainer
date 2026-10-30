@@ -861,6 +861,83 @@
           }
         }
       }
+
+      // 作成・編集モード時の正解手・候補手マーカー描画
+      if (currentTab === 'create') {
+        for (var i = 0; i < 5; i++) {
+          var inputCoord = document.getElementById('solCoord_' + i);
+          if (!inputCoord) continue;
+          var coordStr = inputCoord.value.trim().toUpperCase();
+          if (coordStr.length < 2) continue;
+
+          var colChar = coordStr.charAt(0);
+          var rowNum = parseInt(coordStr.slice(1));
+          var colIdx = COLS.indexOf(colChar);
+          if (colIdx === -1 || isNaN(rowNum) || rowNum < 1 || rowNum > 9) continue;
+          var rowIdx = 9 - rowNum;
+
+          var mx = PADDING + colIdx * STEP;
+          var my = PADDING + rowIdx * STEP;
+
+          ctx.save();
+          if (i === 0) {
+            // 最善手（一番目立つ鮮やかなエメラルドグリーンの二重サークル＋中心点）
+            // 1. 外側パルスリング
+            ctx.beginPath();
+            ctx.arc(mx, my, radius * 0.9, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(34, 197, 94, 0.95)";
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // 2. 内側リング
+            ctx.beginPath();
+            ctx.arc(mx, my, radius * 0.55, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(34, 197, 94, 0.35)";
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 3. ラベル（最善 / 1）
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("最善", mx, my);
+          } else if (i === 1) {
+            // 次善手（スカイブルーのサークル）
+            ctx.beginPath();
+            ctx.arc(mx, my, radius * 0.75, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(59, 130, 246, 0.35)";
+            ctx.fill();
+            ctx.strokeStyle = "rgba(59, 130, 246, 0.95)";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("次善", mx, my);
+          } else {
+            // 候補3〜5（控えめなオレンジリングに番号）
+            ctx.beginPath();
+            ctx.arc(mx, my, radius * 0.65, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(249, 115, 22, 0.3)";
+            ctx.fill();
+            ctx.strokeStyle = "rgba(249, 115, 22, 0.9)";
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(String(i + 1), mx, my);
+          }
+          ctx.restore();
+        }
+      }
     }
 
     function handleCanvasClick(e) {
@@ -1013,6 +1090,7 @@
           var coordInput = document.getElementById("solCoord_" + pickingSlot);
           if (coordInput) coordInput.value = coord;
           stopPicking();
+          renderBoard();
           return;
         }
 
@@ -1234,7 +1312,7 @@
         div.innerHTML = '<div class="sol-editor-header">' +
             '<span>' + labelTitle + '</span>' +
             '<div style="display:flex; gap:4px; align-items:center;">' +
-              '<input type="text" id="solCoord_' + i + '" class="input-text" style="width:46px; text-transform:uppercase; font-weight:700;" placeholder="D3">' +
+              '<input type="text" id="solCoord_' + i + '" class="input-text" oninput="renderBoard()" style="width:46px; text-transform:uppercase; font-weight:700;" placeholder="D3">' +
               '<button class="pick-btn" id="pickBtn_' + i + '" onclick="startPicking(' + i + ')">指定</button>' +
             '</div>' +
           '</div>' +
