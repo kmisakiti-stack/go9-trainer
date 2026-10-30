@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>9路盤 次の一手</title>
-  <meta name="theme-color" content="#dc9b55">
+  <meta name="theme-color" content="#d99748">
   <style>
     * {
       box-sizing: border-box;
@@ -90,25 +90,24 @@
       color: #0f172a;
       border: 1px solid #94a3b8;
     }
-    .board-container {
+    .board-wrap {
       width: 100%;
       max-width: 410px;
-      background: #dc9b55;
-      padding: 8px;
+      aspect-ratio: 1;
+      background: #d99748;
       border-radius: 8px;
       box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      padding: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
-    svg.board-svg {
+    canvas#boardCanvas {
       width: 100%;
-      height: auto;
+      height: 100%;
       display: block;
-    }
-    .board-label {
-      font-size: 13px;
-      fill: #2e1a09;
-      font-weight: 800;
-      text-anchor: middle;
-      dominant-baseline: central;
+      touch-action: none;
+      cursor: pointer;
     }
     .feedback-box {
       width: 100%;
@@ -205,4 +204,101 @@
       padding: 8px 12px;
       background: #dbeafe;
       border: 1px solid #93c5fd;
-      border-radius:
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #1e40af;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .edit-status-banner.show { display: flex; }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .form-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #64748b;
+    }
+    .input-text {
+      width: 100%;
+      padding: 7px 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #1e293b;
+      user-select: auto;
+    }
+    .sol-editor-item {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 8px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .sol-editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .stepper-wrap {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .step-btn {
+      padding: 5px 6px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #1e293b;
+      cursor: pointer;
+    }
+    .step-input {
+      width: 52px;
+      text-align: center;
+      padding: 5px 2px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: #1e293b;
+      user-select: auto;
+    }
+    .pick-btn {
+      padding: 5px 9px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .pick-btn.active {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: #dc2626;
+    }
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .btn {
+      flex: 1;
+      padding: 9px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary { background: #2563eb; color: #ffffff; border-color: #2563eb; }
+    .btn-secondary { background: #
