@@ -615,6 +615,30 @@
     var nextEditColor = 1;
     var editHistory = [];
     var soundEnabled = true;
+
+    // ブラウザの音声自動再生ブロック（User Activation制限）を確実に解除するアンロック処理
+    function unlockAudio() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        // ダミーの無音を極短時間再生してロックを完全に解除
+        var buf = audioCtx.createBuffer(1, 1, 22050);
+        var src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(audioCtx.destination);
+        src.start(0);
+      } catch(e) {}
+    }
+
+    // 画面の初回タップ/クリックで確実に音声をアンロック
+    window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+    window.addEventListener('touchend', unlockAudio, { once: true, passive: true });
+    window.addEventListener('click', unlockAudio, { once: true });
+
     var showExtraCandidates = false;
     var selectedListIdx = -1;
 
@@ -720,7 +744,18 @@
       if (!soundEnabled) return;
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume().then(function() {
+            doPlaySound(isCorrect);
+          });
+          return;
+        }
+        doPlaySound(isCorrect);
+      } catch (e) {}
+    }
+
+    function doPlaySound(isCorrect) {
+      try {
         var now = audioCtx.currentTime;
 
         if (isCorrect) {
