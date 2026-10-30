@@ -745,28 +745,52 @@
       osc.stop(startTime + duration);
     }
 
-    // 不正解ブザー
-    function playBuzzer(startTime, freq, duration) {
-      var osc = audioCtx.createOscillator();
-      var gain = audioCtx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, startTime);
+    var showExtraCandidates = false;
+    var selectedListIdx = -1;
 
-      var filter = audioCtx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(450, startTime);
+    var defaultCandidateNames = ["最善手", "次善手", "", "", ""];
 
-      gain.gain.setValueAtTime(0.2, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    var questions = [
+      {
+        id: 1,
+        title: "基本ヨセ サンプル",
+        moveCount: 45,
+        turn: "B",
+        prisoners: { B: 0, W: 0 },
+        board: [
+          [0,0,0,0,0,0,0,0,0],
+          [0,0,0,0,1,0,0,0,0],
+          [0,0,1,1,2,1,0,0,0],
+          [0,1,2,2,2,1,0,0,0],
+          [1,2,2,0,2,2,1,0,0],
+          [0,1,2,2,1,1,0,0,0],
+          [0,0,1,1,0,0,0,0,0],
+          [0,0,0,0,0,0,0,0,0],
+          [0,0,0,0,0,0,0,0,0]
+        ],
+        solutions: [
+          { coord: "D5", name: "最善手", lead: "+1.5", comment: "中央の白石をアタリにしつつ連絡を断つ手。" },
+          { coord: "C5", name: "次善手", lead: "+0.5", comment: "堅実だが1目損。" }
+        ]
+      }
+    ];
 
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(startTime);
-      osc.stop(startTime + duration);
-    }
+    var board = [
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0]
+    ];
+    var prisoners = { B: 0, W: 0 };
+    var currentTurn = 'B';
+    var answered = false;
 
-    var canvas = null;
+var canvas = null;
     var ctx = null;
     var C_SIZE = 700;
     var PADDING = 68;
