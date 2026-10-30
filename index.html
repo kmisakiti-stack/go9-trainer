@@ -1165,15 +1165,16 @@
           board[r][c] = (currentTurn === 'B') ? 1 : 2;
           renderBoard();
 
-          fbTitle.innerHTML = '⭕ 正解！ <span style="font-size:0.85rem; color:#f8fafc; font-weight:700;">(' + hitSol.coord + ' ' + (hitSol.name || '') + ')</span>';
+          fbTitle.innerHTML = '⭕ 正解！';
           fbTitle.className = 'feedback-title correct';
 
+          var solName = hitSol.name || '正解手';
           var html = '<div class="sol-card active-sol">' +
-            '<div style="font-weight:700; display:flex; justify-content:space-between;">' +
-              '<span>打った手: ' + hitSol.coord + ' [' + (hitSol.name || '正解') + ']</span>' +
+            '<div style="font-weight:700; display:flex; justify-content:space-between; align-items:center;">' +
+              '<span>' + hitSol.coord + ' 【' + solName + '】</span>' +
               '<span style="color:#60a5fa; font-weight:800;">' + (hitSol.lead || '') + '</span>' +
             '</div>' +
-            '<div style="margin-top:4px; font-size:0.8rem; color:#cbd5e1; white-space:pre-wrap;">' + (hitSol.comment || '解説なし') + '</div>' +
+            (hitSol.comment ? '<div style="margin-top:5px; font-size:0.8rem; color:#cbd5e1; white-space:pre-wrap;">' + hitSol.comment + '</div>' : '') +
           '</div>';
 
           var otherSols = [];
@@ -1187,12 +1188,13 @@
             html += '<div style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-top:6px;">その他の候補手:</div>';
             for (var k = 0; k < otherSols.length; k++) {
               var s = otherSols[k];
+              var oName = s.name ? ' 【' + s.name + '】' : '';
               html += '<div class="sol-card" style="margin-top:4px;">' +
-                '<div style="font-weight:700; display:flex; justify-content:space-between;">' +
-                  '<span>' + s.coord + ' [' + (s.name || '') + ']</span>' +
+                '<div style="font-weight:700; display:flex; justify-content:space-between; align-items:center;">' +
+                  '<span>' + s.coord + oName + '</span>' +
                   '<span style="color:#94a3b8;">' + (s.lead || '') + '</span>' +
                 '</div>' +
-                '<div style="margin-top:2px; font-size:0.75rem; color:#94a3b8;">' + (s.comment || '') + '</div>' +
+                (s.comment ? '<div style="margin-top:3px; font-size:0.75rem; color:#94a3b8; white-space:pre-wrap;">' + s.comment + '</div>' : '') +
               '</div>';
             }
           }
@@ -1201,9 +1203,12 @@
           fbBox.classList.add('show');
         } else {
           playStoneSound(false);
-          fbTitle.textContent = '❌ 不正解 (' + coord + ')';
+          fbTitle.textContent = '❌ 不正解';
           fbTitle.className = 'feedback-title wrong';
-          fbDetail.innerHTML = '<span style="font-size:0.8rem; color:#94a3b8;">最善手・有力手ではありません。</span>';
+          fbDetail.innerHTML = '<div class="sol-card" style="border-color:#ef4444; background:rgba(239, 68, 68, 0.1);">' +
+            '<div style="font-weight:700; color:#f87171;">' + coord + ' は不正解です</div>' +
+            '<div style="margin-top:3px; font-size:0.8rem; color:#94a3b8;">最善手・有力手ではありません。もう一度考えてみましょう。</div>' +
+          '</div>';
           fbBox.classList.add('show');
         }
       }
