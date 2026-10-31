@@ -819,6 +819,15 @@
       return newB;
     }
 
+    // 解説文やタイトル内の座標（例: "D5", "J1", "d5"）を回転・反転に合わせて動的置換
+    function translateCommentCoords(str, t) {
+      if (!str || t === 0) return str;
+      return str.replace(/([A-HJ-Za-hj-z])([1-9])/g, function(match, col, row) {
+        var originalCoord = col.toUpperCase() + row;
+        return transformCoordStr(originalCoord, t);
+      });
+    }
+
     var showExtraCandidates = false;
     var selectedListIdx = -1;
     var defaultCandidateNames = ["最善手", "次善手", "", "", ""];
@@ -1250,7 +1259,7 @@
       if (currentTab === 'solve') {
         // 【検討モード（解答後）】: 自由に石を置いて変化を検討
         if (answered) {
-          if (board[r][c] !== 0) return; // すでに石がある場所は置かない
+          if (board[r][c] !== 0) return;
 
           exploreHistory.push({
             board: JSON.parse(JSON.stringify(board)),
@@ -1293,7 +1302,6 @@
           currentMoveCount++;
           updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
 
-          // 解答時点のスナップショットを保存（検討リセット用）
           answeredSnapshot = {
             board: JSON.parse(JSON.stringify(board)),
             turn: currentTurn,
@@ -1353,7 +1361,6 @@
       }
     }
 
-    // 検討機能のコントロール
     function undoExploreMove() {
       if (exploreHistory.length === 0) {
         if (answeredSnapshot) resetExploreBoard();
@@ -1467,7 +1474,6 @@
       var q = questions[currentIdx];
       if (!q) return;
 
-      // 自動回転モードの判定（ランダム変換 0..7）
       currentTransform = (autoRotateMode && currentTab === 'solve') ? Math.floor(Math.random() * 8) : 0;
 
       var baseBoard = (q.board && Array.isArray(q.board) && q.board.length === 9)
@@ -1476,13 +1482,12 @@
 
       board = transformBoard(baseBoard, currentTransform);
 
-      // 正解手・候補手の座標も同じ回転角に変換
       currentDisplaySolutions = (q.solutions || []).map(function(s) {
         return {
           coord: transformCoordStr(s.coord, currentTransform),
           name: s.name,
           lead: s.lead,
-          comment: s.comment
+          comment: translateCommentCoords(s.comment, currentTransform)
         };
       });
 
@@ -1497,7 +1502,8 @@
       var titleDisplay = document.getElementById('currentQTitle');
       if (titleDisplay) {
         var rotLabel = (autoRotateMode && currentTransform > 0) ? ' 🔄' : '';
-        titleDisplay.textContent = '#' + (currentIdx + 1) + ' ' + (q.title || '無題の問題') + rotLabel;
+        var translatedTitle = translateCommentCoords(q.title || '無題の問題', currentTransform);
+        titleDisplay.textContent = '#' + (currentIdx + 1) + ' ' + translatedTitle + rotLabel;
       }
 
       var fbBox = document.getElementById('feedbackBox');
