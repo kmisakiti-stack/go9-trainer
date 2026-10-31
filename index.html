@@ -154,16 +154,6 @@
     }
     .feedback-title.correct { color: #22c55e; }
     .feedback-title.wrong { color: #ef4444; }
-    .btn-quick-next {
-      background: #2563eb;
-      color: #ffffff;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
     .sol-card {
       background: #0f172a;
       border: 1px solid #334155;
@@ -175,6 +165,24 @@
       border-color: #22c55e;
       background: rgba(34, 197, 94, 0.1);
     }
+    .explore-panel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed #334155;
+    }
+    .explore-hint {
+      font-size: 0.75rem;
+      color: #38bdf8;
+      font-weight: 700;
+    }
+    .explore-btns {
+      display: flex;
+      gap: 4px;
+    }
+
     .sticky-nav {
       position: fixed;
       bottom: 0;
@@ -186,7 +194,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 0 12px;
+      padding: 0 10px;
       z-index: 100;
       box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
     }
@@ -194,7 +202,7 @@
       width: 100%;
       max-width: 440px;
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
     .nav-btn {
       flex: 1;
@@ -202,30 +210,28 @@
       border: 1px solid #475569;
       background: #0f172a;
       border-radius: 8px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 700;
       color: #cbd5e1;
       cursor: pointer;
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
     .nav-btn.primary {
       background: #2563eb;
       color: #ffffff;
       border-color: #2563eb;
-      flex: 1.5;
+      flex: 1.3;
     }
-    .icon-shuffle {
-      width: 18px;
-      height: 18px;
-      stroke: currentColor;
-      stroke-width: 2.2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      fill: none;
+    .nav-btn.active-toggle {
+      background: rgba(37, 99, 235, 0.25);
+      border-color: #3b82f6;
+      color: #60a5fa;
     }
+
     .editor-card {
       width: 100%;
       background: #1e293b;
@@ -513,6 +519,13 @@
         <span class="feedback-title" id="feedbackTitle">判定</span>
       </div>
       <div id="feedbackDetail"></div>
+      <div class="explore-panel">
+        <span class="explore-hint">💡 盤上タップで自由に変化を検討できます</span>
+        <div class="explore-btns">
+          <button class="pick-btn" onclick="undoExploreMove()">↩ 1手戻す</button>
+          <button class="pick-btn" onclick="resetExploreBoard()">↺ 解答時に戻す</button>
+        </div>
+      </div>
     </div>
 
     <div class="editor-card" id="editorCard" style="display:none;">
@@ -572,15 +585,8 @@
   <div class="sticky-nav" id="stickyNav">
     <div class="sticky-nav-inner">
       <button class="nav-btn" onclick="prevQuestion()">◀ 前へ</button>
-      <button class="nav-btn" onclick="randomQuestion()" title="ランダム">
-        <svg class="icon-shuffle" viewBox="0 0 24 24">
-          <polyline points="16 3 21 3 21 8"></polyline>
-          <line x1="4" y1="20" x2="21" y2="3"></line>
-          <polyline points="21 16 21 21 16 21"></polyline>
-          <line x1="15" y1="15" x2="21" y2="21"></line>
-          <line x1="4" y1="4" x2="9" y2="9"></line>
-        </svg>
-      </button>
+      <button class="nav-btn" id="shuffleToggleBtn" onclick="toggleShuffleMode()" title="シャッフルモード">🔀 順序</button>
+      <button class="nav-btn" id="rotateToggleBtn" onclick="toggleRotateMode()" title="盤面の自動回転・反転">🔄 回転</button>
       <button class="nav-btn primary" onclick="nextQuestion()">次へ ▶</button>
     </div>
   </div>
@@ -590,8 +596,10 @@
   <script>
     var COLS = ['A','B','C','D','E','F','G','H','J'];
     var SIZE = 9;
-    var STORAGE_KEY = 'go9_quiz_data_v5';
+    var STORAGE_KEY = 'go9_quiz_data_v6';
     var SOUND_KEY = 'go9_sound_enabled';
+    var SHUFFLE_KEY = 'go9_shuffle_enabled';
+    var ROTATE_KEY = 'go9_rotate_enabled';
 
     var currentTab = 'solve';
     var currentIdx = 0;
@@ -603,7 +611,17 @@
     var editHistory = [];
     var soundEnabled = true;
 
-    // 音声アンロック処理
+    // 新機能の設定フラグ
+    var shuffleMode = false;
+    var autoRotateMode = false;
+    var currentTransform = 0; // 0..7
+    var solveHistory = []; // 出題履歴
+
+    // 検討モード用変数
+    var answered = false;
+    var exploreHistory = [];
+    var answeredSnapshot = null;
+
     function unlockAudio() {
       try {
         if (!audioCtx) {
@@ -624,40 +642,73 @@
     window.addEventListener('touchend', unlockAudio, { once: true, passive: true });
     window.addEventListener('click', unlockAudio, { once: true });
 
-    // 音声オン／オフ切り替え
-    function initSoundSetting() {
+    function initToggles() {
       try {
-        var saved = localStorage.getItem(SOUND_KEY);
-        if (saved !== null) {
-          soundEnabled = (saved === 'true');
-        } else {
-          soundEnabled = true;
-        }
-      } catch(e) {
-        soundEnabled = true;
-      }
+        var savedSound = localStorage.getItem(SOUND_KEY);
+        soundEnabled = (savedSound !== null) ? (savedSound === 'true') : true;
+
+        var savedShuffle = localStorage.getItem(SHUFFLE_KEY);
+        shuffleMode = (savedShuffle === 'true');
+
+        var savedRotate = localStorage.getItem(ROTATE_KEY);
+        autoRotateMode = (savedRotate === 'true');
+      } catch(e) {}
       updateSoundUI();
+      updateShuffleUI();
+      updateRotateUI();
     }
 
     function toggleSound() {
       soundEnabled = !soundEnabled;
-      try {
-        localStorage.setItem(SOUND_KEY, String(soundEnabled));
-      } catch(e) {}
+      try { localStorage.setItem(SOUND_KEY, String(soundEnabled)); } catch(e) {}
       updateSoundUI();
     }
 
     function updateSoundUI() {
       var btn = document.getElementById('soundToggleBtn');
       if (btn) {
-        if (soundEnabled) {
-          btn.innerHTML = '🔊';
-          btn.classList.remove('muted');
-          btn.title = '音を消音にする';
+        btn.innerHTML = soundEnabled ? '🔊' : '🔇';
+        btn.classList.toggle('muted', !soundEnabled);
+      }
+    }
+
+    function toggleShuffleMode() {
+      shuffleMode = !shuffleMode;
+      try { localStorage.setItem(SHUFFLE_KEY, String(shuffleMode)); } catch(e) {}
+      updateShuffleUI();
+    }
+
+    function updateShuffleUI() {
+      var btn = document.getElementById('shuffleToggleBtn');
+      if (btn) {
+        if (shuffleMode) {
+          btn.innerHTML = '🔀 ランダム';
+          btn.classList.add('active-toggle');
         } else {
-          btn.innerHTML = '🔇';
-          btn.classList.add('muted');
-          btn.title = '音を鳴らす';
+          btn.innerHTML = '➡️ 順序通り';
+          btn.classList.remove('active-toggle');
+        }
+      }
+    }
+
+    function toggleRotateMode() {
+      autoRotateMode = !autoRotateMode;
+      try { localStorage.setItem(ROTATE_KEY, String(autoRotateMode)); } catch(e) {}
+      updateRotateUI();
+      if (currentTab === 'solve') {
+        loadQuestion(currentIdx, true);
+      }
+    }
+
+    function updateRotateUI() {
+      var btn = document.getElementById('rotateToggleBtn');
+      if (btn) {
+        if (autoRotateMode) {
+          btn.innerHTML = '🔄 回転:ON';
+          btn.classList.add('active-toggle');
+        } else {
+          btn.innerHTML = '🔄 回転:OFF';
+          btn.classList.remove('active-toggle');
         }
       }
     }
@@ -668,22 +719,17 @@
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') {
-          audioCtx.resume().then(function() {
-            doPlayStoneSound(isCorrect);
-          });
+          audioCtx.resume().then(function() { doPlayStoneSound(isCorrect); });
           return;
         }
         doPlayStoneSound(isCorrect);
       } catch (e) {}
     }
 
-    // 本格碁盤・蛤碁石のリアル着手音合成エンジン
     function doPlayStoneSound(isCorrect) {
       try {
         var now = audioCtx.currentTime;
-
         if (isCorrect !== false) {
-          // 1. 衝突アタック音（カチッ）
           var clickBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.012), audioCtx.sampleRate);
           var clickData = clickBuf.getChannelData(0);
           for (var i = 0; i < clickData.length; i++) {
@@ -691,61 +737,48 @@
           }
           var clickSrc = audioCtx.createBufferSource();
           clickSrc.buffer = clickBuf;
-
           var clickFilter = audioCtx.createBiquadFilter();
           clickFilter.type = 'highpass';
           clickFilter.frequency.setValueAtTime(2400, now);
-
           var clickGain = audioCtx.createGain();
           clickGain.gain.setValueAtTime(0.9, now);
           clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.012);
-
           clickSrc.connect(clickFilter);
           clickFilter.connect(clickGain);
           clickGain.connect(audioCtx.destination);
           clickSrc.start(now);
 
-          // 2. 碁石の固有硬質振動（パシッ）
           var stoneOsc = audioCtx.createOscillator();
           var stoneGain = audioCtx.createGain();
           stoneOsc.type = 'sine';
           stoneOsc.frequency.setValueAtTime(1250, now);
           stoneOsc.frequency.exponentialRampToValueAtTime(450, now + 0.035);
-
           stoneGain.gain.setValueAtTime(0.75, now);
           stoneGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
-
           stoneOsc.connect(stoneGain);
           stoneGain.connect(audioCtx.destination);
           stoneOsc.start(now);
           stoneOsc.stop(now + 0.035);
 
-          // 3. カヤ盤の胴鳴り（コーン）
           var boardOsc = audioCtx.createOscillator();
           var boardGain = audioCtx.createGain();
           boardOsc.type = 'triangle';
           boardOsc.frequency.setValueAtTime(220, now);
           boardOsc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
-
           boardGain.gain.setValueAtTime(0.65, now);
           boardGain.gain.exponentialRampToValueAtTime(0.001, now + 0.085);
-
           boardOsc.connect(boardGain);
           boardGain.connect(audioCtx.destination);
           boardOsc.start(now);
           boardOsc.stop(now + 0.085);
-
         } else {
-          // 不正解ミス音
           var badOsc = audioCtx.createOscillator();
           var badGain = audioCtx.createGain();
           badOsc.type = 'sine';
           badOsc.frequency.setValueAtTime(180, now);
           badOsc.frequency.linearRampToValueAtTime(90, now + 0.12);
-
           badGain.gain.setValueAtTime(0.4, now);
           badGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
           badOsc.connect(badGain);
           badGain.connect(audioCtx.destination);
           badOsc.start(now);
@@ -754,9 +787,40 @@
       } catch (e) {}
     }
 
+    // 8通りの回転・反転座標変換 (D4群)
+    function transformCoord(r, c, t) {
+      if (t === 1) return [c, 8 - r]; // 90度回転
+      if (t === 2) return [8 - r, 8 - c]; // 180度回転
+      if (t === 3) return [8 - c, r]; // 270度回転
+      if (t === 4) return [r, 8 - c]; // 左右反転
+      if (t === 5) return [8 - r, c]; // 上下反転
+      if (t === 6) return [c, r]; // 主対角線反転
+      if (t === 7) return [8 - c, 8 - r]; // 反対角線反転
+      return [r, c]; // 原型 (t=0)
+    }
+
+    function transformCoordStr(coordStr, t) {
+      if (!coordStr || coordStr.length < 2) return coordStr;
+      var c = COLS.indexOf(coordStr.charAt(0).toUpperCase());
+      var r = 9 - parseInt(coordStr.slice(1));
+      if (c === -1 || isNaN(r) || r < 0 || r > 8) return coordStr;
+      var tr = transformCoord(r, c, t);
+      return COLS[tr[1]] + String(9 - tr[0]);
+    }
+
+    function transformBoard(srcBoard, t) {
+      var newB = Array(SIZE).fill(0).map(function() { return Array(SIZE).fill(0); });
+      for (var r = 0; r < SIZE; r++) {
+        for (var c = 0; c < SIZE; c++) {
+          var tr = transformCoord(r, c, t);
+          newB[tr[0]][tr[1]] = srcBoard[r][c];
+        }
+      }
+      return newB;
+    }
+
     var showExtraCandidates = false;
     var selectedListIdx = -1;
-
     var defaultCandidateNames = ["最善手", "次善手", "", "", ""];
 
     var questions = [
@@ -816,9 +880,10 @@
       [0,0,0,0,0,0,0,0,0],
       [0,0,0,0,0,0,0,0,0]
     ];
+    var currentDisplaySolutions = [];
     var prisoners = { B: 0, W: 0 };
     var currentTurn = 'B';
-    var answered = false;
+    var currentMoveCount = 1;
 
     var canvas = null;
     var ctx = null;
@@ -896,37 +961,31 @@
             gradB.addColorStop(0, "#475569");
             gradB.addColorStop(0.3, "#1e293b");
             gradB.addColorStop(1, "#020617");
-
             ctx.save();
             ctx.shadowColor = "rgba(0,0,0,0.35)";
             ctx.shadowBlur = 5;
             ctx.shadowOffsetX = 2;
             ctx.shadowOffsetY = 3;
-
             ctx.beginPath();
             ctx.arc(px, py, radius, 0, Math.PI * 2);
             ctx.fillStyle = gradB;
             ctx.fill();
             ctx.restore();
-
           } else if (val === 2) {
             var gradW = ctx.createRadialGradient(px - radius * 0.35, py - radius * 0.35, radius * 0.05, px, py, radius);
             gradW.addColorStop(0, "#ffffff");
             gradW.addColorStop(0.7, "#f8fafc");
             gradW.addColorStop(1, "#cbd5e1");
-
             ctx.save();
             ctx.shadowColor = "rgba(0,0,0,0.25)";
             ctx.shadowBlur = 5;
             ctx.shadowOffsetX = 2;
             ctx.shadowOffsetY = 3;
-
             ctx.beginPath();
             ctx.arc(px, py, radius, 0, Math.PI * 2);
             ctx.fillStyle = gradW;
             ctx.fill();
             ctx.restore();
-
             ctx.strokeStyle = "#94a3b8";
             ctx.lineWidth = 1.2;
             ctx.stroke();
@@ -940,13 +999,11 @@
           if (!inputCoord) continue;
           var coordStr = inputCoord.value.trim().toUpperCase();
           if (coordStr.length < 2) continue;
-
           var colChar = coordStr.charAt(0);
           var rowNum = parseInt(coordStr.slice(1));
           var colIdx = COLS.indexOf(colChar);
           if (colIdx === -1 || isNaN(rowNum) || rowNum < 1 || rowNum > 9) continue;
           var rowIdx = 9 - rowNum;
-
           var mx = PADDING + colIdx * STEP;
           var my = PADDING + rowIdx * STEP;
 
@@ -957,7 +1014,6 @@
             ctx.strokeStyle = "rgba(34, 197, 94, 0.95)";
             ctx.lineWidth = 4;
             ctx.stroke();
-
             ctx.beginPath();
             ctx.arc(mx, my, radius * 0.55, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(34, 197, 94, 0.35)";
@@ -965,7 +1021,6 @@
             ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = 2;
             ctx.stroke();
-
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 16px sans-serif";
             ctx.textAlign = "center";
@@ -979,7 +1034,6 @@
             ctx.strokeStyle = "rgba(59, 130, 246, 0.95)";
             ctx.lineWidth = 3;
             ctx.stroke();
-
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 16px sans-serif";
             ctx.textAlign = "center";
@@ -993,7 +1047,6 @@
             ctx.strokeStyle = "rgba(249, 115, 22, 0.9)";
             ctx.lineWidth = 2.5;
             ctx.stroke();
-
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 16px sans-serif";
             ctx.textAlign = "center";
@@ -1009,7 +1062,7 @@
     function handleCanvasClick(e) {
       if (!canvas) return;
       var now = Date.now();
-      if (now - lastClickTimestamp < 150) return; // 二重タップ防止ガード
+      if (now - lastClickTimestamp < 120) return;
       lastClickTimestamp = now;
 
       var rect = canvas.getBoundingClientRect();
@@ -1030,7 +1083,6 @@
 
       var bestCol = -1, bestRow = -1;
       var minDist = 999999;
-
       for (var r = 0; r < SIZE; r++) {
         for (var c = 0; c < SIZE; c++) {
           var targetX = PADDING + c * STEP;
@@ -1075,13 +1127,11 @@
     function getGroupAndLiberties(r, c, targetBoard) {
       var color = targetBoard[r][c];
       if (color === 0) return { stones: [], liberties: 0 };
-
       var stones = [];
       var visited = Array(SIZE).fill(0).map(function() { return Array(SIZE).fill(false); });
       var libertySet = {};
       var queue = [[r, c]];
       visited[r][c] = true;
-
       var dr = [-1, 1, 0, 0];
       var dc = [0, 0, -1, 1];
 
@@ -1103,11 +1153,7 @@
           }
         }
       }
-
-      return {
-        stones: stones,
-        liberties: Object.keys(libertySet).length
-      };
+      return { stones: stones, liberties: Object.keys(libertySet).length };
     }
 
     function captureOpponentStones(r, c, placedColor) {
@@ -1136,14 +1182,15 @@
 
       if (capturedTotal > 0) {
         if (placedColor === 1) {
+          prisoners.B += capturedTotal;
           var capBInput = document.getElementById('qCapB');
           if (capBInput) capBInput.value = parseInt(capBInput.value || 0) + capturedTotal;
         } else {
+          prisoners.W += capturedTotal;
           var capWInput = document.getElementById('qCapW');
           if (capWInput) capWInput.value = parseInt(capWInput.value || 0) + capturedTotal;
         }
       }
-
       return capturedTotal;
     }
 
@@ -1155,6 +1202,7 @@
     function onCellClick(r, c) {
       var coord = COLS[c] + (9 - r);
 
+      // --- 作成モード ---
       if (currentTab === 'create') {
         if (pickingSlot !== null) {
           var coordInput = document.getElementById("solCoord_" + pickingSlot);
@@ -1175,53 +1223,59 @@
         var placed = 0;
         if (editMode === 'alternate') {
           if (board[r][c] !== 0) {
-            // すでに石がある場所をタップした場合は消去
             board[r][c] = 0;
           } else {
-            // 空いている場所をタップした場合は交互に石を置く
             board[r][c] = nextEditColor;
             placed = nextEditColor;
             nextEditColor = (nextEditColor === 1) ? 2 : 1;
             playStoneSound(true);
           }
         } else if (editMode === 'black') {
-          if (board[r][c] === 1) {
-            board[r][c] = 0;
-          } else {
-            board[r][c] = 1;
-            placed = 1;
-            playStoneSound(true);
-          }
+          if (board[r][c] === 1) board[r][c] = 0;
+          else { board[r][c] = 1; placed = 1; playStoneSound(true); }
         } else if (editMode === 'white') {
-          if (board[r][c] === 2) {
-            board[r][c] = 0;
-          } else {
-            board[r][c] = 2;
-            placed = 2;
-            playStoneSound(true);
-          }
+          if (board[r][c] === 2) board[r][c] = 0;
+          else { board[r][c] = 2; placed = 2; playStoneSound(true); }
         } else if (editMode === 'erase') {
           board[r][c] = 0;
         }
 
-        if (placed > 0) {
-          captureOpponentStones(r, c, placed);
-        }
-
+        if (placed > 0) captureOpponentStones(r, c, placed);
         renderBoard();
         autoDetectTurnFromStones();
         return;
       }
 
+      // --- 解く・検討モード ---
       if (currentTab === 'solve') {
-        if (answered) return;
-        var q = questions[currentIdx];
-        if (!q || !q.solutions) return;
+        // 【検討モード（解答後）】: 自由に石を置いて変化を検討
+        if (answered) {
+          if (board[r][c] !== 0) return; // すでに石がある場所は置かない
 
+          exploreHistory.push({
+            board: JSON.parse(JSON.stringify(board)),
+            turn: currentTurn,
+            moveCount: currentMoveCount,
+            prisoners: { B: prisoners.B, W: prisoners.W }
+          });
+
+          var placedColor = (currentTurn === 'B') ? 1 : 2;
+          board[r][c] = placedColor;
+          playStoneSound(true);
+          captureOpponentStones(r, c, placedColor);
+
+          currentTurn = (currentTurn === 'B') ? 'W' : 'B';
+          currentMoveCount++;
+          updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
+          renderBoard();
+          return;
+        }
+
+        // 【次の一手解答判定】
         var hitSol = null;
-        for (var i = 0; i < q.solutions.length; i++) {
-          if (q.solutions[i].coord && q.solutions[i].coord.toUpperCase() === coord) {
-            hitSol = q.solutions[i];
+        for (var i = 0; i < currentDisplaySolutions.length; i++) {
+          if (currentDisplaySolutions[i].coord && currentDisplaySolutions[i].coord.toUpperCase() === coord) {
+            hitSol = currentDisplaySolutions[i];
             break;
           }
         }
@@ -1234,6 +1288,20 @@
           playStoneSound(true);
           answered = true;
           board[r][c] = (currentTurn === 'B') ? 1 : 2;
+          captureOpponentStones(r, c, (currentTurn === 'B') ? 1 : 2);
+          currentTurn = (currentTurn === 'B') ? 'W' : 'B';
+          currentMoveCount++;
+          updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
+
+          // 解答時点のスナップショットを保存（検討リセット用）
+          answeredSnapshot = {
+            board: JSON.parse(JSON.stringify(board)),
+            turn: currentTurn,
+            moveCount: currentMoveCount,
+            prisoners: { B: prisoners.B, W: prisoners.W }
+          };
+          exploreHistory = [];
+
           renderBoard();
 
           fbTitle.innerHTML = '⭕ 正解！';
@@ -1249,9 +1317,9 @@
           '</div>';
 
           var otherSols = [];
-          for (var j = 0; j < q.solutions.length; j++) {
-            if (q.solutions[j].coord && q.solutions[j].coord.toUpperCase() !== coord) {
-              otherSols.push(q.solutions[j]);
+          for (var j = 0; j < currentDisplaySolutions.length; j++) {
+            if (currentDisplaySolutions[j].coord && currentDisplaySolutions[j].coord.toUpperCase() !== coord) {
+              otherSols.push(currentDisplaySolutions[j]);
             }
           }
 
@@ -1285,6 +1353,32 @@
       }
     }
 
+    // 検討機能のコントロール
+    function undoExploreMove() {
+      if (exploreHistory.length === 0) {
+        if (answeredSnapshot) resetExploreBoard();
+        return;
+      }
+      var prev = exploreHistory.pop();
+      board = prev.board;
+      currentTurn = prev.turn;
+      currentMoveCount = prev.moveCount;
+      prisoners = { B: prev.prisoners.B, W: prev.prisoners.W };
+      updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
+      renderBoard();
+    }
+
+    function resetExploreBoard() {
+      if (!answeredSnapshot) return;
+      board = JSON.parse(JSON.stringify(answeredSnapshot.board));
+      currentTurn = answeredSnapshot.turn;
+      currentMoveCount = answeredSnapshot.moveCount;
+      prisoners = { B: answeredSnapshot.prisoners.B, W: answeredSnapshot.prisoners.W };
+      exploreHistory = [];
+      updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
+      renderBoard();
+    }
+
     function init() {
       canvas = document.getElementById('boardCanvas');
       canvas.addEventListener('click', handleCanvasClick);
@@ -1293,7 +1387,7 @@
         handleCanvasClick(e);
       }, { passive: false });
 
-      initSoundSetting();
+      initToggles();
       loadStorage();
       renderSolutionsEditor();
       loadQuestion(0);
@@ -1338,9 +1432,7 @@
       if (tab === 'solve') {
         if (questions[currentIdx]) loadQuestion(currentIdx);
       } else if (tab === 'create') {
-        if (!keepEdit) {
-          resetEditorForm();
-        }
+        if (!keepEdit) resetEditorForm();
         renderBoard();
       } else if (tab === 'list') {
         updateListUI();
@@ -1358,9 +1450,7 @@
         badge.className = 'badge-turn' + (turn === 'W' ? ' white' : '');
       }
       var moveCountEl = document.getElementById('moveCountText');
-      if (moveCountEl) {
-        moveCountEl.textContent = (moveCount || 1) + '手目';
-      }
+      if (moveCountEl) moveCountEl.textContent = (moveCount || 1) + '手目';
       if (capB !== undefined) {
         var elB = document.getElementById('capBlack');
         if (elB) elB.textContent = capB;
@@ -1371,26 +1461,43 @@
       }
     }
 
-    function loadQuestion(idx) {
+    function loadQuestion(idx, isReorient) {
       if (!questions || questions.length === 0) return;
       currentIdx = (idx + questions.length) % questions.length;
       var q = questions[currentIdx];
       if (!q) return;
 
-      if (q.board && Array.isArray(q.board) && q.board.length === 9) {
-        board = JSON.parse(JSON.stringify(q.board));
-      } else {
-        board = Array(9).fill(0).map(function() { return Array(9).fill(0); });
-      }
+      // 自動回転モードの判定（ランダム変換 0..7）
+      currentTransform = (autoRotateMode && currentTab === 'solve') ? Math.floor(Math.random() * 8) : 0;
+
+      var baseBoard = (q.board && Array.isArray(q.board) && q.board.length === 9)
+        ? q.board
+        : Array(9).fill(0).map(function() { return Array(9).fill(0); });
+
+      board = transformBoard(baseBoard, currentTransform);
+
+      // 正解手・候補手の座標も同じ回転角に変換
+      currentDisplaySolutions = (q.solutions || []).map(function(s) {
+        return {
+          coord: transformCoordStr(s.coord, currentTransform),
+          name: s.name,
+          lead: s.lead,
+          comment: s.comment
+        };
+      });
 
       prisoners = { B: (q.prisoners && q.prisoners.B) || 0, W: (q.prisoners && q.prisoners.W) || 0 };
       currentTurn = q.turn || 'B';
+      currentMoveCount = q.moveCount || 1;
       answered = false;
+      exploreHistory = [];
+      answeredSnapshot = null;
 
-      updateInfoBar(currentTurn, q.moveCount || 45, prisoners.B, prisoners.W);
+      updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
       var titleDisplay = document.getElementById('currentQTitle');
       if (titleDisplay) {
-        titleDisplay.textContent = '#' + (currentIdx + 1) + ' ' + (q.title || '無題の問題');
+        var rotLabel = (autoRotateMode && currentTransform > 0) ? ' 🔄' : '';
+        titleDisplay.textContent = '#' + (currentIdx + 1) + ' ' + (q.title || '無題の問題') + rotLabel;
       }
 
       var fbBox = document.getElementById('feedbackBox');
@@ -1401,29 +1508,31 @@
 
     function prevQuestion() {
       if (!questions || questions.length === 0) return;
-      loadQuestion(currentIdx - 1);
+      if (solveHistory.length > 0) {
+        var prevIdx = solveHistory.pop();
+        loadQuestion(prevIdx);
+      } else {
+        loadQuestion(currentIdx - 1);
+      }
     }
 
     function nextQuestion() {
       if (!questions || questions.length === 0) return;
-      if (questions.length === 1) {
-        loadQuestion(0);
+      solveHistory.push(currentIdx);
+
+      if (shuffleMode && questions.length > 1) {
+        var nextIdx = currentIdx;
+        while (nextIdx === currentIdx) {
+          nextIdx = Math.floor(Math.random() * questions.length);
+        }
+        loadQuestion(nextIdx);
       } else {
         loadQuestion(currentIdx + 1);
       }
     }
 
     function randomQuestion() {
-      if (!questions || questions.length === 0) return;
-      if (questions.length === 1) {
-        loadQuestion(0);
-        return;
-      }
-      var nextIdx = Math.floor(Math.random() * questions.length);
-      if (nextIdx === currentIdx) {
-        nextIdx = (currentIdx + 1) % questions.length;
-      }
-      loadQuestion(nextIdx);
+      toggleShuffleMode();
     }
 
     function renderSolutionsEditor() {
@@ -1460,47 +1569,29 @@
     }
 
     function toggleExtraCandidates(forceState) {
-      if (forceState !== undefined) {
-        showExtraCandidates = forceState;
-      } else {
-        showExtraCandidates = !showExtraCandidates;
-      }
+      if (forceState !== undefined) showExtraCandidates = forceState;
+      else showExtraCandidates = !showExtraCandidates;
 
       for (var i = 2; i < 5; i++) {
         var el = document.getElementById('solItem_' + i);
-        if (el) {
-          if (showExtraCandidates) el.classList.add('show');
-          else el.classList.remove('show');
-        }
+        if (el) el.classList.toggle('show', showExtraCandidates);
       }
-
       var btn = document.getElementById('toggleExtraBtn');
-      if (btn) {
-        btn.textContent = showExtraCandidates ? '▲ 候補手3〜5を閉じる' : '＋ 候補手3〜5を表示する';
-      }
+      if (btn) btn.textContent = showExtraCandidates ? '▲ 候補手3〜5を閉じる' : '＋ 候補手3〜5を表示する';
     }
 
     function startPicking(slot) {
-      if (pickingSlot === slot) {
-        stopPicking();
-        return;
-      }
+      if (pickingSlot === slot) { stopPicking(); return; }
       stopPicking();
       pickingSlot = slot;
       var btn = document.getElementById("pickBtn_" + slot);
-      if (btn) {
-        btn.classList.add('active');
-        btn.innerHTML = '盤面タップ';
-      }
+      if (btn) { btn.classList.add('active'); btn.innerHTML = '盤面タップ'; }
     }
 
     function stopPicking() {
       if (pickingSlot !== null) {
         var btn = document.getElementById("pickBtn_" + pickingSlot);
-        if (btn) {
-          btn.classList.remove('active');
-          btn.innerHTML = '指定';
-        }
+        if (btn) { btn.classList.remove('active'); btn.innerHTML = '指定'; }
       }
       pickingSlot = null;
     }
@@ -1513,36 +1604,6 @@
       input.value = (val >= 0 ? '+' : '') + val.toFixed(1);
     }
 
-    function stepVal(id, delta) {
-      var input = document.getElementById(id);
-      if (!input) return;
-      var val = parseInt(input.value) || 0;
-      input.value = Math.max(0, val + delta);
-      var capB = parseInt(document.getElementById('qCapB').value) || 0;
-      var capW = parseInt(document.getElementById('qCapW').value) || 0;
-      var turnVal = document.getElementById('qTurn').value;
-      var mvVal = parseInt(document.getElementById('qMoveCount').value) || 1;
-      updateInfoBar(turnVal, mvVal, capB, capW);
-    }
-
-    function syncTurnAndMove(fromTurnSelect) {
-      var turnSel = document.getElementById('qTurn');
-      var moveInp = document.getElementById('qMoveCount');
-      if (fromTurnSelect) {
-        var mv = parseInt(moveInp.value) || 1;
-        if (turnSel.value === 'B' && mv % 2 === 0) moveInp.value = mv + 1;
-        if (turnSel.value === 'W' && mv % 2 === 1) moveInp.value = mv + 1;
-      } else {
-        var mv2 = parseInt(moveInp.value) || 1;
-        turnSel.value = (mv2 % 2 === 1) ? 'B' : 'W';
-      }
-      nextEditColor = (turnSel.value === 'B') ? 1 : 2;
-
-      var capB = parseInt(document.getElementById('qCapB').value) || 0;
-      var capW = parseInt(document.getElementById('qCapW').value) || 0;
-      updateInfoBar(turnSel.value, parseInt(moveInp.value) || 1, capB, capW);
-    }
-
     function autoDetectTurnFromStones() {
       var bCount = 0, wCount = 0;
       for (var r = 0; r < SIZE; r++) {
@@ -1553,22 +1614,17 @@
       }
       var capB = parseInt(document.getElementById('qCapB').value) || 0;
       var capW = parseInt(document.getElementById('qCapW').value) || 0;
-
       var totalBMoves = bCount + capW;
       var totalWMoves = wCount + capB;
       var totalPlayed = totalBMoves + totalWMoves;
+      var currentMove = totalPlayed + 1;
 
       var moveInp = document.getElementById('qMoveCount');
       var turnSel = document.getElementById('qTurn');
-
-      var currentMove = totalPlayed + 1;
       if (moveInp) moveInp.value = Math.max(1, currentMove);
-
       var turnVal = (totalBMoves === totalWMoves) ? 'B' : 'W';
       if (turnSel) turnSel.value = turnVal;
-
       nextEditColor = (turnVal === 'B') ? 1 : 2;
-
       updateInfoBar(turnVal, currentMove, capB, capW);
     }
 
@@ -1581,18 +1637,7 @@
         capW: parseInt(document.getElementById('qCapW').value) || 0
       });
       updateUndoButton();
-
-      board = [
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0]
-      ];
+      board = Array(9).fill(0).map(function() { return Array(9).fill(0); });
       nextEditColor = 1;
       document.getElementById('qMoveCount').value = 1;
       document.getElementById('qTurn').value = 'B';
@@ -1630,10 +1675,7 @@
       if (!forceAsNew && editingQuestionId !== null) {
         var qIdx = -1;
         for (var j = 0; j < questions.length; j++) {
-          if (questions[j].id === editingQuestionId) {
-            qIdx = j;
-            break;
-          }
+          if (questions[j].id === editingQuestionId) { qIdx = j; break; }
         }
         if (qIdx !== -1) {
           questions[qIdx] = {
@@ -1648,9 +1690,8 @@
           currentIdx = qIdx;
         }
       } else {
-        var newId = Date.now();
         questions.push({
-          id: newId,
+          id: Date.now(),
           title: title,
           turn: turn,
           moveCount: moveCount,
@@ -1669,10 +1710,7 @@
     function editQuestion(id) {
       var q = null;
       for (var j = 0; j < questions.length; j++) {
-        if (questions[j].id === id) {
-          q = questions[j];
-          break;
-        }
+        if (questions[j].id === id) { q = questions[j]; break; }
       }
       if (!q) return;
 
@@ -1694,23 +1732,17 @@
         document.getElementById("solCoord_" + i).value = sol ? sol.coord : '';
         document.getElementById("solName_" + i).value = sol ? sol.name : (defaultCandidateNames[i] || "");
         document.getElementById("solLead_" + i).value = sol ? sol.lead : '+0.0';
-        
         var commentEl = document.getElementById("solComment_" + i);
         commentEl.value = sol ? sol.comment : '';
         commentEl.style.height = '';
-
-        if (i >= 2 && sol && sol.coord) {
-          hasExtra = true;
-        }
+        if (i >= 2 && sol && sol.coord) hasExtra = true;
       }
 
       toggleExtraCandidates(hasExtra);
-
       document.getElementById('editBanner').classList.add('show');
       document.getElementById('editBannerText').innerHTML = '問題「' + q.title + '」を編集中 (上書き保存)';
       document.getElementById('saveBtn').innerHTML = '上書き保存';
       document.getElementById('saveAsNewBtn').style.display = 'flex';
-
       setTab('create', true);
     }
 
@@ -1727,19 +1759,8 @@
       document.getElementById('saveBtn').innerHTML = '保存';
       document.getElementById('saveAsNewBtn').style.display = 'none';
 
-      board = [
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0]
-      ];
+      board = Array(9).fill(0).map(function() { return Array(9).fill(0); });
       nextEditColor = 1;
-
       document.getElementById('qTitle').value = '';
       document.getElementById('qMoveCount').value = 1;
       document.getElementById('qTurn').value = 'B';
@@ -1748,12 +1769,10 @@
       updateInfoBar('B', 1, 0, 0);
 
       toggleExtraCandidates(false);
-
       for (var i = 0; i < 5; i++) {
         document.getElementById("solCoord_" + i).value = '';
         document.getElementById("solName_" + i).value = defaultCandidateNames[i] || "";
         document.getElementById("solLead_" + i).value = '+0.0';
-        
         var commentEl = document.getElementById("solComment_" + i);
         commentEl.value = '';
         commentEl.style.height = '';
@@ -1763,11 +1782,7 @@
 
     function deleteQuestion(id) {
       if (!confirm("この問題を削除しますか？")) return;
-      var newQ = [];
-      for (var i = 0; i < questions.length; i++) {
-        if (questions[i].id !== id) newQ.push(questions[i]);
-      }
-      questions = newQ;
+      questions = questions.filter(function(q) { return q.id !== id; });
       if (editingQuestionId === id) cancelEditing();
       if (currentIdx >= questions.length) currentIdx = Math.max(0, questions.length - 1);
       saveStorage();
@@ -1778,20 +1793,17 @@
       if (!questions || idx < 0 || idx >= questions.length) return;
       selectedListIdx = idx;
       var q = questions[idx];
-
       board = JSON.parse(JSON.stringify(q.board));
       prisoners = { B: (q.prisoners && q.prisoners.B) || 0, W: (q.prisoners && q.prisoners.W) || 0 };
       currentTurn = q.turn || 'B';
       answered = false;
 
       updateInfoBar(currentTurn, q.moveCount || 45, prisoners.B, prisoners.W);
-
       var titleDisplay = document.getElementById('currentQTitle');
       if (titleDisplay) {
         titleDisplay.style.display = 'block';
         titleDisplay.textContent = '【プレビュー】 #' + (idx + 1) + ' ' + (q.title || '無題の問題');
       }
-
       renderBoard();
       highlightSelectedItem();
     }
@@ -1799,8 +1811,7 @@
     function highlightSelectedItem() {
       var items = document.querySelectorAll('.q-item');
       items.forEach(function(item, i) {
-        if (i === selectedListIdx) item.classList.add('selected-preview');
-        else item.classList.remove('selected-preview');
+        item.classList.toggle('selected-preview', i === selectedListIdx);
       });
     }
 
