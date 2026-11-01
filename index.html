@@ -520,10 +520,10 @@
       </div>
       <div id="feedbackDetail"></div>
       <div class="explore-panel">
-        <span class="explore-hint">💡 盤上タップで自由に変化を検討できます</span>
+        <span class="explore-hint">💡 盤上タップで変化を検討できます</span>
         <div class="explore-btns">
           <button class="pick-btn" onclick="undoExploreMove()">↩ 1手戻す</button>
-          <button class="pick-btn" onclick="resetExploreBoard()">↺ 解答時に戻す</button>
+          <button class="pick-btn" onclick="retryCurrentQuestion()">↺ もう一度解く</button>
         </div>
       </div>
     </div>
@@ -611,16 +611,13 @@
     var editHistory = [];
     var soundEnabled = true;
 
-    // 新機能の設定フラグ
     var shuffleMode = false;
     var autoRotateMode = false;
     var currentTransform = 0; // 0..7
-    var solveHistory = []; // 出題履歴
+    var solveHistory = [];
 
-    // 検討モード用変数
     var answered = false;
     var exploreHistory = [];
-    var answeredSnapshot = null;
 
     function unlockAudio() {
       try {
@@ -787,16 +784,15 @@
       } catch (e) {}
     }
 
-    // 8通りの回転・反転座標変換 (D4群)
     function transformCoord(r, c, t) {
-      if (t === 1) return [c, 8 - r]; // 90度回転
-      if (t === 2) return [8 - r, 8 - c]; // 180度回転
-      if (t === 3) return [8 - c, r]; // 270度回転
-      if (t === 4) return [r, 8 - c]; // 左右反転
-      if (t === 5) return [8 - r, c]; // 上下反転
-      if (t === 6) return [c, r]; // 主対角線反転
-      if (t === 7) return [8 - c, 8 - r]; // 反対角線反転
-      return [r, c]; // 原型 (t=0)
+      if (t === 1) return [c, 8 - r];
+      if (t === 2) return [8 - r, 8 - c];
+      if (t === 3) return [8 - c, r];
+      if (t === 4) return [r, 8 - c];
+      if (t === 5) return [8 - r, c];
+      if (t === 6) return [c, r];
+      if (t === 7) return [8 - c, 8 - r];
+      return [r, c];
     }
 
     function transformCoordStr(coordStr, t) {
@@ -819,7 +815,6 @@
       return newB;
     }
 
-    // 解説文やタイトル内の座標（例: "D5", "J1", "d5"）を回転・反転に合わせて動的置換
     function translateCommentCoords(str, t) {
       if (!str || t === 0) return str;
       return str.replace(/([A-HJ-Za-hj-z])([1-9])/g, function(match, col, row) {
@@ -1257,7 +1252,7 @@
 
       // --- 解く・検討モード ---
       if (currentTab === 'solve') {
-        // 【検討モード（解答後）】: 自由に石を置いて変化を検討
+        // 【検討モード（解答後）】: 盤上タップで自由に変化を打てる
         if (answered) {
           if (board[r][c] !== 0) return;
 
@@ -1302,14 +1297,7 @@
           currentMoveCount++;
           updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
 
-          answeredSnapshot = {
-            board: JSON.parse(JSON.stringify(board)),
-            turn: currentTurn,
-            moveCount: currentMoveCount,
-            prisoners: { B: prisoners.B, W: prisoners.W }
-          };
           exploreHistory = [];
-
           renderBoard();
 
           fbTitle.innerHTML = '⭕ 正解！';
@@ -1361,9 +1349,10 @@
       }
     }
 
+    // 検討手の1手戻し（初手まで戻ったら未解答状態に復帰）
     function undoExploreMove() {
       if (exploreHistory.length === 0) {
-        if (answeredSnapshot) resetExploreBoard();
+        retryCurrentQuestion();
         return;
       }
       var prev = exploreHistory.pop();
@@ -1375,14 +1364,29 @@
       renderBoard();
     }
 
-    function resetExploreBoard() {
-      if (!answeredSnapshot) return;
-      board = JSON.parse(JSON.stringify(answeredSnapshot.board));
-      currentTurn = answeredSnapshot.turn;
-      currentMoveCount = answeredSnapshot.moveCount;
-      prisoners = { B: answeredSnapshot.prisoners.B, W: answeredSnapshot.prisoners.W };
+    // 盤面を出題時の未解答状態にリセットして、別の手を最初から試せるようにする
+    function retryCurrentQuestion() {
+      var q = questions[currentIdx];
+      if (!q) return;
+
+      var baseBoard = (q.board && Array.isArray(q.board) && q.board.length === 9)
+        ? q.board
+        : Array(9).fill(0).map(function() { return Array(9).fill(0); });
+
+      // 現在の回転状態を維持したまま出題盤面を再生成
+      board = transformBoard(baseBoard, currentTransform);
+      prisoners = { B: (q.prisoners && q.prisoners.B) || 0, W: (q.prisoners && q.prisoners.W) || 0 };
+      currentTurn = q.turn || 'B';
+      currentMoveCount = q.moveCount || 1;
+
+      answered = false;
       exploreHistory = [];
+
       updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
+
+      var fbBox = document.getElementById('feedbackBox');
+      if (fbBox) fbBox.classList.remove('show');
+
       renderBoard();
     }
 
@@ -1496,7 +1500,6 @@
       currentMoveCount = q.moveCount || 1;
       answered = false;
       exploreHistory = [];
-      answeredSnapshot = null;
 
       updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
       var titleDisplay = document.getElementById('currentQTitle');
@@ -1535,10 +1538,6 @@
       } else {
         loadQuestion(currentIdx + 1);
       }
-    }
-
-    function randomQuestion() {
-      toggleShuffleMode();
     }
 
     function renderSolutionsEditor() {
