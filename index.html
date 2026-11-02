@@ -165,6 +165,10 @@
       border-color: #22c55e;
       background: rgba(34, 197, 94, 0.1);
     }
+    .sol-card.wrong-sol {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
     .explore-panel {
       display: flex;
       justify-content: space-between;
@@ -273,6 +277,15 @@
       font-size: 0.85rem;
       color: #f8fafc;
       user-select: auto;
+    }
+    .select-type {
+      padding: 4px 6px;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #f8fafc;
     }
     textarea.input-text {
       resize: vertical;
@@ -556,7 +569,7 @@
       <input type="hidden" id="qCapW" value="0">
 
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-        <span style="font-size:0.8rem; font-weight:800; color:#cbd5e1;">正解手・候補手（最大5択）</span>
+        <span style="font-size:0.8rem; font-weight:800; color:#cbd5e1;">正解手・候補手・失敗手（最大5枠）</span>
         <button class="pick-btn" onclick="clearBoardStones()">盤面全消去</button>
       </div>
 
@@ -596,7 +609,7 @@
   <script>
     var COLS = ['A','B','C','D','E','F','G','H','J'];
     var SIZE = 9;
-    var STORAGE_KEY = 'go9_quiz_data_v6';
+    var STORAGE_KEY = 'go9_quiz_data_v7';
     var SOUND_KEY = 'go9_sound_enabled';
     var SHUFFLE_KEY = 'go9_shuffle_enabled';
     var ROTATE_KEY = 'go9_rotate_enabled';
@@ -613,7 +626,7 @@
 
     var shuffleMode = false;
     var autoRotateMode = false;
-    var currentTransform = 0; // 0..7
+    var currentTransform = 0;
     var solveHistory = [];
 
     var answered = false;
@@ -825,7 +838,7 @@
 
     var showExtraCandidates = false;
     var selectedListIdx = -1;
-    var defaultCandidateNames = ["最善手", "次善手", "", "", ""];
+    var defaultCandidateNames = ["最善手", "次善手", "失敗手", "", ""];
 
     var questions = [
       {
@@ -846,8 +859,9 @@
           [0,0,0,0,0,0,0,0,0]
         ],
         solutions: [
-          { coord: "D5", name: "最善手", lead: "+1.5", comment: "中央の白石をアタリにしつつ連絡を断つ手。" },
-          { coord: "C5", name: "次善手", lead: "+0.5", comment: "堅実だが1目損。" }
+          { coord: "D5", type: "correct", name: "最善手", lead: "+1.5", comment: "中央の白石をアタリにしつつ連絡を断つ手。" },
+          { coord: "C5", type: "correct", name: "次善手", lead: "+0.5", comment: "堅実だが1目損。" },
+          { coord: "E5", type: "wrong", name: "失敗", lead: "-2.0", comment: "白にツナがれて中央の黒が弱くなります。" }
         ]
       },
       {
@@ -868,7 +882,7 @@
           [0,0,0,0,0,0,2,1,0]
         ],
         solutions: [
-          { coord: "J1", name: "最善手", lead: "+3.0", comment: "隅の急所に打って生きを確定させる手。" }
+          { coord: "J1", type: "correct", name: "最善手", lead: "+3.0", comment: "隅の急所に打って生きを確定させる手。" }
         ]
       }
     ];
@@ -1011,8 +1025,26 @@
           var mx = PADDING + colIdx * STEP;
           var my = PADDING + rowIdx * STEP;
 
+          var solType = document.getElementById('solType_' + i) ? document.getElementById('solType_' + i).value : 'correct';
+
           ctx.save();
-          if (i === 0) {
+          if (solType === 'wrong') {
+            // 失敗手のマーカー（赤系）
+            ctx.beginPath();
+            ctx.arc(mx, my, radius * 0.7, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(239, 68, 68, 0.3)";
+            ctx.fill();
+            ctx.strokeStyle = "rgba(239, 68, 68, 0.9)";
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 15px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("✕", mx, my);
+          } else if (i === 0) {
+            // 最善手（緑）
             ctx.beginPath();
             ctx.arc(mx, my, radius * 0.9, 0, Math.PI * 2);
             ctx.strokeStyle = "rgba(34, 197, 94, 0.95)";
@@ -1031,6 +1063,7 @@
             ctx.textBaseline = "middle";
             ctx.fillText("最善", mx, my);
           } else if (i === 1) {
+            // 次善手（青）
             ctx.beginPath();
             ctx.arc(mx, my, radius * 0.75, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(59, 130, 246, 0.35)";
@@ -1044,6 +1077,7 @@
             ctx.textBaseline = "middle";
             ctx.fillText("次善", mx, my);
           } else {
+            // その他候補手（オレンジ）
             ctx.beginPath();
             ctx.arc(mx, my, radius * 0.65, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(249, 115, 22, 0.3)";
@@ -1289,54 +1323,90 @@
         var fbDetail = document.getElementById('feedbackDetail');
 
         if (hitSol) {
-          playStoneSound(true);
-          answered = true;
-          board[r][c] = (currentTurn === 'B') ? 1 : 2;
-          captureOpponentStones(r, c, (currentTurn === 'B') ? 1 : 2);
-          currentTurn = (currentTurn === 'B') ? 'W' : 'B';
-          currentMoveCount++;
-          updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
+          var isWrongType = (hitSol.type === 'wrong');
 
-          exploreHistory = [];
-          renderBoard();
+          if (isWrongType) {
+            // 【登録された失敗手】
+            playStoneSound(false);
+            answered = true;
+            board[r][c] = (currentTurn === 'B') ? 1 : 2;
+            captureOpponentStones(r, c, (currentTurn === 'B') ? 1 : 2);
+            currentTurn = (currentTurn === 'B') ? 'W' : 'B';
+            currentMoveCount++;
+            updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
 
-          fbTitle.innerHTML = '⭕ 正解！';
-          fbTitle.className = 'feedback-title correct';
+            exploreHistory = [];
+            renderBoard();
 
-          var solName = hitSol.name || '正解手';
-          var html = '<div class="sol-card active-sol">' +
-            '<div style="font-weight:700; display:flex; justify-content:space-between; align-items:center;">' +
-              '<span>' + hitSol.coord + ' 【' + solName + '】</span>' +
-              '<span style="color:#60a5fa; font-weight:800;">' + (hitSol.lead || '') + '</span>' +
-            '</div>' +
-            (hitSol.comment ? '<div style="margin-top:5px; font-size:0.8rem; color:#cbd5e1; white-space:pre-wrap;">' + hitSol.comment + '</div>' : '') +
-          '</div>';
+            fbTitle.innerHTML = '❌ 失敗';
+            fbTitle.className = 'feedback-title wrong';
 
-          var otherSols = [];
-          for (var j = 0; j < currentDisplaySolutions.length; j++) {
-            if (currentDisplaySolutions[j].coord && currentDisplaySolutions[j].coord.toUpperCase() !== coord) {
-              otherSols.push(currentDisplaySolutions[j]);
+            var solName = hitSol.name || '失敗手';
+            var html = '<div class="sol-card wrong-sol">' +
+              '<div style="font-weight:700; display:flex; justify-content:space-between; align-items:center;">' +
+                '<span style="color:#f87171;">' + hitSol.coord + ' 【' + solName + '】</span>' +
+                '<span style="color:#f87171; font-weight:800;">' + (hitSol.lead || '') + '</span>' +
+              '</div>' +
+              (hitSol.comment ? '<div style="margin-top:5px; font-size:0.8rem; color:#cbd5e1; white-space:pre-wrap;">' + hitSol.comment + '</div>' : '') +
+            '</div>';
+
+            fbDetail.innerHTML = html;
+            fbBox.classList.add('show');
+          } else {
+            // 【正解手（最善・次善など）】
+            playStoneSound(true);
+            answered = true;
+            board[r][c] = (currentTurn === 'B') ? 1 : 2;
+            captureOpponentStones(r, c, (currentTurn === 'B') ? 1 : 2);
+            currentTurn = (currentTurn === 'B') ? 'W' : 'B';
+            currentMoveCount++;
+            updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
+
+            exploreHistory = [];
+            renderBoard();
+
+            fbTitle.innerHTML = '⭕ 正解！';
+            fbTitle.className = 'feedback-title correct';
+
+            var solName = hitSol.name || '正解手';
+            var html = '<div class="sol-card active-sol">' +
+              '<div style="font-weight:700; display:flex; justify-content:space-between; align-items:center;">' +
+                '<span>' + hitSol.coord + ' 【' + solName + '】</span>' +
+                '<span style="color:#60a5fa; font-weight:800;">' + (hitSol.lead || '') + '</span>' +
+              '</div>' +
+              (hitSol.comment ? '<div style="margin-top:5px; font-size:0.8rem; color:#cbd5e1; white-space:pre-wrap;">' + hitSol.comment + '</div>' : '') +
+            '</div>';
+
+            var otherSols = [];
+            for (var j = 0; j < currentDisplaySolutions.length; j++) {
+              if (currentDisplaySolutions[j].coord && currentDisplaySolutions[j].coord.toUpperCase() !== coord) {
+                otherSols.push(currentDisplaySolutions[j]);
+              }
             }
-          }
 
-          if (otherSols.length > 0) {
-            html += '<div style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-top:6px;">その他の候補手:</div>';
-            for (var k = 0; k < otherSols.length; k++) {
-              var s = otherSols[k];
-              var oName = s.name ? ' 【' + s.name + '】' : '';
-              html += '<div class="sol-card" style="margin-top:4px;">' +
-                '<div style="font-weight:700; display:flex; justify-content:space-between; align-items:center;">' +
-                  '<span>' + s.coord + oName + '</span>' +
-                  '<span style="color:#94a3b8;">' + (s.lead || '') + '</span>' +
-                '</div>' +
-                (s.comment ? '<div style="margin-top:3px; font-size:0.75rem; color:#94a3b8; white-space:pre-wrap;">' + s.comment + '</div>' : '') +
-              '</div>';
+            if (otherSols.length > 0) {
+              html += '<div style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-top:6px;">その他の候補手:</div>';
+              for (var k = 0; k < otherSols.length; k++) {
+                var s = otherSols[k];
+                var isOtherWrong = (s.type === 'wrong');
+                var oName = s.name ? ' 【' + s.name + '】' : '';
+                var cardClass = isOtherWrong ? 'sol-card wrong-sol' : 'sol-card';
+                var leadColor = isOtherWrong ? '#f87171' : '#94a3b8';
+                html += '<div class="' + cardClass + '" style="margin-top:4px;">' +
+                  '<div style="font-weight:700; display:flex; justify-content:space-between; align-items:center;">' +
+                    '<span>' + s.coord + oName + '</span>' +
+                    '<span style="color:' + leadColor + ';">' + (s.lead || '') + '</span>' +
+                  '</div>' +
+                  (s.comment ? '<div style="margin-top:3px; font-size:0.75rem; color:#94a3b8; white-space:pre-wrap;">' + s.comment + '</div>' : '') +
+                '</div>';
+              }
             }
-          }
 
-          fbDetail.innerHTML = html;
-          fbBox.classList.add('show');
+            fbDetail.innerHTML = html;
+            fbBox.classList.add('show');
+          }
         } else {
+          // 未登録の不正解手
           playStoneSound(false);
           fbTitle.textContent = '❌ 不正解';
           fbTitle.className = 'feedback-title wrong';
@@ -1349,7 +1419,6 @@
       }
     }
 
-    // 検討手の1手戻し（初手まで戻ったら未解答状態に復帰）
     function undoExploreMove() {
       if (exploreHistory.length === 0) {
         retryCurrentQuestion();
@@ -1364,7 +1433,6 @@
       renderBoard();
     }
 
-    // 盤面を出題時の未解答状態にリセットして、別の手を最初から試せるようにする
     function retryCurrentQuestion() {
       var q = questions[currentIdx];
       if (!q) return;
@@ -1373,7 +1441,6 @@
         ? q.board
         : Array(9).fill(0).map(function() { return Array(9).fill(0); });
 
-      // 現在の回転状態を維持したまま出題盤面を再生成
       board = transformBoard(baseBoard, currentTransform);
       prisoners = { B: (q.prisoners && q.prisoners.B) || 0, W: (q.prisoners && q.prisoners.W) || 0 };
       currentTurn = q.turn || 'B';
@@ -1489,6 +1556,7 @@
       currentDisplaySolutions = (q.solutions || []).map(function(s) {
         return {
           coord: transformCoordStr(s.coord, currentTransform),
+          type: s.type || 'correct',
           name: s.name,
           lead: s.lead,
           comment: translateCommentCoords(s.comment, currentTransform)
@@ -1545,7 +1613,7 @@
       if (!container) return;
       container.innerHTML = '';
       for (var i = 0; i < 5; i++) {
-        var labelTitle = (i === 0) ? "最善手 (必須)" : ((i === 1) ? "次善手" : ("候補手 " + (i + 1)));
+        var labelTitle = (i === 0) ? "正解手 (最善)" : ("候補枠 " + (i + 1));
         var initVal = defaultCandidateNames[i] || "";
         var extraClass = (i >= 2) ? " extra-candidate" : "";
         var div = document.createElement('div');
@@ -1554,12 +1622,16 @@
         div.innerHTML = '<div class="sol-editor-header">' +
             '<span>' + labelTitle + '</span>' +
             '<div style="display:flex; gap:4px; align-items:center;">' +
+              '<select id="solType_' + i + '" class="select-type" onchange="renderBoard()">' +
+                '<option value="correct">⭕ 正解</option>' +
+                '<option value="wrong">❌ 失敗</option>' +
+              '</select>' +
               '<input type="text" id="solCoord_' + i + '" class="input-text" oninput="renderBoard()" style="width:46px; text-transform:uppercase; font-weight:700;" placeholder="D3">' +
               '<button class="pick-btn" id="pickBtn_' + i + '" onclick="startPicking(' + i + ')">指定</button>' +
             '</div>' +
           '</div>' +
           '<div style="display:flex; gap:6px;">' +
-            '<input type="text" id="solName_' + i + '" class="input-text" style="flex:1;" value="' + initVal + '" placeholder="評価 (例: 3番手・妥協策など)">' +
+            '<input type="text" id="solName_' + i + '" class="input-text" style="flex:1;" value="' + initVal + '" placeholder="評価名 (例: 最善手・妥協策・失敗など)">' +
             '<div class="stepper-wrap">' +
               '<button class="step-btn" onclick="stepLead(' + i + ', 1.0)">+1.0</button>' +
               '<button class="step-btn" onclick="stepLead(' + i + ', 0.5)">+0.5</button>' +
@@ -1568,7 +1640,7 @@
               '<button class="step-btn" onclick="stepLead(' + i + ', -1.0)">-1.0</button>' +
             '</div>' +
           '</div>' +
-          '<textarea id="solComment_' + i + '" class="input-text" rows="2" placeholder="解説・変化図メモ"></textarea>';
+          '<textarea id="solComment_' + i + '" class="input-text" rows="2" placeholder="解説・失敗理由・変化図メモ"></textarea>';
         container.appendChild(div);
       }
     }
@@ -1665,6 +1737,7 @@
         if (coord) {
           sols.push({
             coord: coord,
+            type: document.getElementById("solType_" + i) ? document.getElementById("solType_" + i).value : "correct",
             name: document.getElementById("solName_" + i).value.trim() || (i === 0 ? "最善手" : (i === 1 ? "次善手" : "候補手 " + (i + 1))),
             lead: document.getElementById("solLead_" + i).value.trim(),
             comment: document.getElementById("solComment_" + i).value.trim()
@@ -1673,7 +1746,7 @@
       }
 
       if (sols.length === 0) {
-        alert("少なくとも1つの正解手（座標）を指定してください。");
+        alert("少なくとも1つの正解手または候補手（座標）を指定してください。");
         return;
       }
 
@@ -1735,6 +1808,9 @@
       for (var i = 0; i < 5; i++) {
         var sol = q.solutions && q.solutions[i];
         document.getElementById("solCoord_" + i).value = sol ? sol.coord : '';
+        if (document.getElementById("solType_" + i)) {
+          document.getElementById("solType_" + i).value = (sol && sol.type) ? sol.type : 'correct';
+        }
         document.getElementById("solName_" + i).value = sol ? sol.name : (defaultCandidateNames[i] || "");
         document.getElementById("solLead_" + i).value = sol ? sol.lead : '+0.0';
         var commentEl = document.getElementById("solComment_" + i);
@@ -1776,6 +1852,9 @@
       toggleExtraCandidates(false);
       for (var i = 0; i < 5; i++) {
         document.getElementById("solCoord_" + i).value = '';
+        if (document.getElementById("solType_" + i)) {
+          document.getElementById("solType_" + i).value = 'correct';
+        }
         document.getElementById("solName_" + i).value = defaultCandidateNames[i] || "";
         document.getElementById("solLead_" + i).value = '+0.0';
         var commentEl = document.getElementById("solComment_" + i);
@@ -1838,7 +1917,7 @@
           var best = (q.solutions && q.solutions[0]) ? q.solutions[0].coord : '-';
           item.innerHTML = '<div style="flex:1;">' +
               '<div style="font-weight:700;">#' + (i + 1) + ' ' + q.title + '</div>' +
-              '<div style="font-size:0.75rem; color:#94a3b8;">' + (q.turn === 'B' ? '黒番' : '白番') + ' / ' + (q.moveCount || '-') + '手目 / 正解: ' + best + ' (' + (q.solutions ? q.solutions.length : 0) + '択)</div>' +
+              '<div style="font-size:0.75rem; color:#94a3b8;">' + (q.turn === 'B' ? '黒番' : '白番') + ' / ' + (q.moveCount || '-') + '手目 / 正解: ' + best + ' (' + (q.solutions ? q.solutions.length : 0) + '枠)</div>' +
             '</div>' +
             '<div style="display:flex; gap:4px;">' +
               '<button class="pick-btn" onclick="editQuestion(' + q.id + ')">編集</button>' +
