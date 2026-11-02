@@ -87,6 +87,45 @@
       align-items: center;
       gap: 10px;
     }
+    .title-bar-wrap {
+      width: 100%;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .q-title-display {
+      flex: 1;
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 800;
+      color: #38bdf8;
+      background: #1e293b;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-solve-now {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: none;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(37,99,235,0.4);
+      animation: pulseBtn 2s infinite;
+    }
+    @keyframes pulseBtn {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
     .info-bar {
       width: 100%;
       display: flex;
@@ -481,18 +520,6 @@
       border: 2px solid #38bdf8 !important;
       background: rgba(56, 189, 248, 0.12) !important;
     }
-    .q-title-display {
-      width: 100%;
-      text-align: center;
-      font-size: 1.05rem;
-      font-weight: 800;
-      color: #38bdf8;
-      background: #1e293b;
-      padding: 6px 12px;
-      border-radius: 8px;
-      border: 1px solid #334155;
-      letter-spacing: 0.03em;
-    }
   </style>
 </head>
 <body>
@@ -510,7 +537,11 @@
   </header>
 
   <main>
-    <div class="q-title-display" id="currentQTitle">問題タイトル</div>
+    <div class="title-bar-wrap">
+      <div class="q-title-display" id="currentQTitle">問題タイトル</div>
+      <button class="btn-solve-now" id="btnSolveNow" onclick="startSolveFromPreview()">▶ 解く</button>
+    </div>
+
     <div class="info-bar">
       <div style="display:flex; gap:8px; align-items:center;">
         <span class="badge-turn" id="turnBadge">黒番</span>
@@ -523,7 +554,7 @@
       </div>
     </div>
 
-    <div class="board-wrap">
+    <div class="board-wrap" id="boardWrapElement">
       <canvas id="boardCanvas" width="700" height="700"></canvas>
     </div>
 
@@ -1029,7 +1060,6 @@
 
           ctx.save();
           if (solType === 'wrong') {
-            // 失敗手のマーカー（赤系）
             ctx.beginPath();
             ctx.arc(mx, my, radius * 0.7, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(239, 68, 68, 0.3)";
@@ -1037,14 +1067,12 @@
             ctx.strokeStyle = "rgba(239, 68, 68, 0.9)";
             ctx.lineWidth = 2.5;
             ctx.stroke();
-
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 15px sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("✕", mx, my);
           } else if (i === 0) {
-            // 最善手（緑）
             ctx.beginPath();
             ctx.arc(mx, my, radius * 0.9, 0, Math.PI * 2);
             ctx.strokeStyle = "rgba(34, 197, 94, 0.95)";
@@ -1063,7 +1091,6 @@
             ctx.textBaseline = "middle";
             ctx.fillText("最善", mx, my);
           } else if (i === 1) {
-            // 次善手（青）
             ctx.beginPath();
             ctx.arc(mx, my, radius * 0.75, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(59, 130, 246, 0.35)";
@@ -1077,7 +1104,6 @@
             ctx.textBaseline = "middle";
             ctx.fillText("次善", mx, my);
           } else {
-            // その他候補手（オレンジ）
             ctx.beginPath();
             ctx.arc(mx, my, radius * 0.65, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(249, 115, 22, 0.3)";
@@ -1240,7 +1266,6 @@
     function onCellClick(r, c) {
       var coord = COLS[c] + (9 - r);
 
-      // --- 作成モード ---
       if (currentTab === 'create') {
         if (pickingSlot !== null) {
           var coordInput = document.getElementById("solCoord_" + pickingSlot);
@@ -1284,9 +1309,7 @@
         return;
       }
 
-      // --- 解く・検討モード ---
       if (currentTab === 'solve') {
-        // 【検討モード（解答後）】: 盤上タップで自由に変化を打てる
         if (answered) {
           if (board[r][c] !== 0) return;
 
@@ -1309,7 +1332,6 @@
           return;
         }
 
-        // 【次の一手解答判定】
         var hitSol = null;
         for (var i = 0; i < currentDisplaySolutions.length; i++) {
           if (currentDisplaySolutions[i].coord && currentDisplaySolutions[i].coord.toUpperCase() === coord) {
@@ -1326,7 +1348,6 @@
           var isWrongType = (hitSol.type === 'wrong');
 
           if (isWrongType) {
-            // 【登録された失敗手】
             playStoneSound(false);
             answered = true;
             board[r][c] = (currentTurn === 'B') ? 1 : 2;
@@ -1353,7 +1374,6 @@
             fbDetail.innerHTML = html;
             fbBox.classList.add('show');
           } else {
-            // 【正解手（最善・次善など）】
             playStoneSound(true);
             answered = true;
             board[r][c] = (currentTurn === 'B') ? 1 : 2;
@@ -1406,7 +1426,6 @@
             fbBox.classList.add('show');
           }
         } else {
-          // 未登録の不正解手
           playStoneSound(false);
           fbTitle.textContent = '❌ 不正解';
           fbTitle.className = 'feedback-title wrong';
@@ -1457,6 +1476,23 @@
       renderBoard();
     }
 
+    // プレビュー表示バーの「▶ 解く」ボタンから直接解答開始
+    function startSolveFromPreview() {
+      setTab('solve');
+      loadQuestion(selectedListIdx >= 0 ? selectedListIdx : currentIdx);
+      scrollToBoard();
+    }
+
+    // 碁盤位置へスムーズスクロール
+    function scrollToBoard() {
+      var el = document.getElementById('boardWrapElement');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
     function init() {
       canvas = document.getElementById('boardCanvas');
       canvas.addEventListener('click', handleCanvasClick);
@@ -1502,17 +1538,22 @@
       document.getElementById('listCard').style.display = (tab === 'list') ? 'flex' : 'none';
       document.getElementById('stickyNav').style.display = (tab === 'solve') ? 'flex' : 'none';
       document.getElementById('feedbackBox').classList.remove('show');
+      
       var titleDisplay = document.getElementById('currentQTitle');
-      if (titleDisplay) {
-        titleDisplay.style.display = (tab === 'solve' || tab === 'list') ? 'block' : 'none';
-      }
+      var btnSolveNow = document.getElementById('btnSolveNow');
 
       if (tab === 'solve') {
+        if (titleDisplay) titleDisplay.style.display = 'block';
+        if (btnSolveNow) btnSolveNow.style.display = 'none';
         if (questions[currentIdx]) loadQuestion(currentIdx);
       } else if (tab === 'create') {
+        if (titleDisplay) titleDisplay.style.display = 'none';
+        if (btnSolveNow) btnSolveNow.style.display = 'none';
         if (!keepEdit) resetEditorForm();
         renderBoard();
       } else if (tab === 'list') {
+        if (titleDisplay) titleDisplay.style.display = 'block';
+        if (btnSolveNow) btnSolveNow.style.display = 'block'; // 一覧タブ時は「▶ 解く」ボタンを表示
         updateListUI();
         if (questions && questions.length > 0) {
           var targetIdx = (selectedListIdx >= 0 && selectedListIdx < questions.length) ? selectedListIdx : (questions.length - 1);
@@ -1899,6 +1940,12 @@
       });
     }
 
+    // リストの行から直接「解く」
+    function directSolveFromList(idx) {
+      selectedListIdx = idx;
+      startSolveFromPreview();
+    }
+
     function updateListUI() {
       var countEl = document.getElementById('totalQCount');
       if (countEl) countEl.textContent = questions.length;
@@ -1919,7 +1966,8 @@
               '<div style="font-weight:700;">#' + (i + 1) + ' ' + q.title + '</div>' +
               '<div style="font-size:0.75rem; color:#94a3b8;">' + (q.turn === 'B' ? '黒番' : '白番') + ' / ' + (q.moveCount || '-') + '手目 / 正解: ' + best + ' (' + (q.solutions ? q.solutions.length : 0) + '枠)</div>' +
             '</div>' +
-            '<div style="display:flex; gap:4px;">' +
+            '<div style="display:flex; gap:4px; align-items:center;">' +
+              '<button class="pick-btn" style="background:#2563eb; color:#fff;" onclick="directSolveFromList(' + i + ')">解く</button>' +
               '<button class="pick-btn" onclick="editQuestion(' + q.id + ')">編集</button>' +
               '<button class="pick-btn" style="color:#ef4444;" onclick="deleteQuestion(' + q.id + ')">削除</button>' +
             '</div>';
