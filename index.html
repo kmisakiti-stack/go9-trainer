@@ -715,7 +715,7 @@
       autoRotateMode = !autoRotateMode;
       try { localStorage.setItem(ROTATE_KEY, String(autoRotateMode)); } catch(e) {}
       updateRotateUI();
-      if (currentTab === 'solve' || currentTab === 'list') {
+      if (currentTab === 'solve') {
         loadQuestion(currentIdx, true);
       }
     }
@@ -1548,7 +1548,8 @@
       var q = questions[currentIdx];
       if (!q) return;
 
-      currentTransform = (autoRotateMode && (currentTab === 'solve' || currentTab === 'list')) ? Math.floor(Math.random() * 8) : 0;
+      // 一覧（list）の時は回転させず原型（0）固定、「解く（solve）」の時のみランダム回転
+      currentTransform = (autoRotateMode && currentTab === 'solve') ? Math.floor(Math.random() * 8) : 0;
 
       var baseBoard = (q.board && Array.isArray(q.board) && q.board.length === 9)
         ? q.board
@@ -1575,7 +1576,7 @@
       updateInfoBar(currentTurn, currentMoveCount, prisoners.B, prisoners.W);
       var titleDisplay = document.getElementById('currentQTitle');
       if (titleDisplay) {
-        var rotLabel = (autoRotateMode && currentTransform > 0) ? ' 🔄' : '';
+        var rotLabel = (currentTab === 'solve' && autoRotateMode && currentTransform > 0) ? ' 🔄' : '';
         var translatedTitle = translateCommentCoords(q.title || '無題の問題', currentTransform);
         titleDisplay.textContent = '#' + (currentIdx + 1) + ' ' + translatedTitle + rotLabel;
       }
