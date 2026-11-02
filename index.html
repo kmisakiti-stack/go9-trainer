@@ -472,13 +472,12 @@
       border-color: #64748b;
     }
     
-    /* 一覧リストの独立スクロールエリア */
     .q-list {
       width: 100%;
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 260px; /* リスト部分を独立スクロールさせて見比べを極限まで快適化 */
+      max-height: 260px;
       overflow-y: auto;
       padding-right: 4px;
     }
@@ -593,7 +592,7 @@
       </div>
     </div>
 
-    <!-- 一覧画面（盤面を見比べながら下部リストを快適スクロール） -->
+    <!-- 一覧画面 -->
     <div class="editor-card" id="listCard" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <span style="font-size:0.85rem; font-weight:800;">登録問題一覧 (<span id="totalQCount">0</span>問)</span>
@@ -1290,7 +1289,7 @@
         return;
       }
 
-      // --- 解くモード・一覧プレビューからの直接解答 ---
+      // --- 解くモード・一覧画面からの直接解答 ---
       if (currentTab === 'solve' || currentTab === 'list') {
         // 【検討モード（解答後）】
         if (answered) {
@@ -1577,9 +1576,8 @@
       var titleDisplay = document.getElementById('currentQTitle');
       if (titleDisplay) {
         var rotLabel = (autoRotateMode && currentTransform > 0) ? ' 🔄' : '';
-        var prefix = (currentTab === 'list') ? '【プレビュー】 ' : '';
         var translatedTitle = translateCommentCoords(q.title || '無題の問題', currentTransform);
-        titleDisplay.textContent = prefix + '#' + (currentIdx + 1) + ' ' + translatedTitle + rotLabel;
+        titleDisplay.textContent = '#' + (currentIdx + 1) + ' ' + translatedTitle + rotLabel;
       }
 
       var fbBox = document.getElementById('feedbackBox');
