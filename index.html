@@ -319,7 +319,7 @@
       align-items: center;
     }
 
-    /* タグ・フェーズ選択チップ（横書き・折り返し防止） */
+    /* タグ・フェーズ選択チップ */
     .chip-group {
       display: flex;
       flex-wrap: wrap;
@@ -346,11 +346,6 @@
       border-color: #38bdf8;
       color: #ffffff;
     }
-    .tag-chip.selected-tactic {
-      background: #7c3aed;
-      border-color: #a78bfa;
-      color: #ffffff;
-    }
     .tag-chip.filter-active {
       background: #2563eb;
       border-color: #60a5fa;
@@ -361,6 +356,57 @@
       border-color: #a78bfa;
       color: #ffffff;
     }
+
+    /* 削除ボタン付き戦法チップ */
+    .tactic-chip-wrap {
+      display: inline-flex;
+      align-items: center;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 16px;
+      overflow: hidden;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .tactic-chip-wrap.selected {
+      background: #7c3aed;
+      border-color: #a78bfa;
+    }
+    .tactic-chip-label {
+      padding: 5px 8px 5px 11px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tactic-chip-wrap.selected .tactic-chip-label {
+      color: #ffffff;
+    }
+    .tactic-chip-del {
+      padding: 5px 8px 5px 4px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #94a3b8;
+      background: transparent;
+      border: none;
+      border-left: 1px solid rgba(148, 163, 184, 0.25);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tactic-chip-del:hover, .tactic-chip-del:active {
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.2);
+    }
+    .tactic-chip-wrap.selected .tactic-chip-del {
+      color: rgba(255, 255, 255, 0.8);
+      border-left-color: rgba(255, 255, 255, 0.25);
+    }
+
     .tactic-add-row {
       display: flex;
       gap: 6px;
@@ -677,9 +723,9 @@
         </div>
       </div>
 
-      <!-- 戦法名タグ -->
+      <!-- 戦法名タグ（選択 ＋ ×削除ボタン付き） -->
       <div class="form-group">
-        <label class="form-label">戦法名（タップ選択 または 新規追加）</label>
+        <label class="form-label">戦法名（タップ選択 / ×で削除 / 新規追加）</label>
         <div class="chip-group" id="tacticChipsContainer"></div>
         <div class="tactic-add-row">
           <input type="text" class="input-text" id="newTacticInput" placeholder="例: ブラックブーメラン, 振り子" oninput="updateAutoTitlePreview()" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTactic();}">
@@ -1092,6 +1138,39 @@
       renderTagSelectors();
     }
 
+    function deleteTacticGlobally(tacticName) {
+      if (!confirm('戦法名「' + tacticName + '」を削除しますか？\n（※すでにこの戦法が付いている問題からも外れます）')) return;
+
+      // 現在の選択中リストから除外
+      var selIdx = selectedTactics.indexOf(tacticName);
+      if (selIdx !== -1) {
+        selectedTactics.splice(selIdx, 1);
+      }
+
+      // フィルターで選択中なら解除
+      if (activeFilterTag === tacticName) {
+        activeFilterTag = 'ALL';
+      }
+
+      // 既存の全問題データからその戦法を削除し、自動生成タイトルも更新
+      var updatedCount = 0;
+      for (var i = 0; i < questions.length; i++) {
+        var q = questions[i];
+        if (Array.isArray(q.tactics)) {
+          var tIdx = q.tactics.indexOf(tacticName);
+          if (tIdx !== -1) {
+            q.tactics.splice(tIdx, 1);
+            q.title = buildTitleFromTags(q.phase || '', q.tactics, '');
+            updatedCount++;
+          }
+        }
+      }
+
+      saveStorage();
+      renderTagSelectors();
+      updateListUI();
+    }
+
     function addCustomTactic() {
       var inp = document.getElementById('newTacticInput');
       if (!inp) return;
@@ -1121,12 +1200,29 @@
       var known = getAllKnownTactics();
       for (var i = 0; i < known.length; i++) {
         (function(tName) {
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'tag-chip' + (selectedTactics.indexOf(tName) !== -1 ? ' selected-tactic' : '');
-          btn.textContent = tName;
-          btn.onclick = function() { toggleTacticSelection(tName); };
-          container.appendChild(btn);
+          var isSelected = (selectedTactics.indexOf(tName) !== -1);
+          var wrap = document.createElement('div');
+          wrap.className = 'tactic-chip-wrap' + (isSelected ? ' selected' : '');
+
+          var labelBtn = document.createElement('button');
+          labelBtn.type = 'button';
+          labelBtn.className = 'tactic-chip-label';
+          labelBtn.textContent = tName;
+          labelBtn.onclick = function() { toggleTacticSelection(tName); };
+
+          var delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'tactic-chip-del';
+          delBtn.title = '戦法を削除';
+          delBtn.textContent = '×';
+          delBtn.onclick = function(e) {
+            e.stopPropagation();
+            deleteTacticGlobally(tName);
+          };
+
+          wrap.appendChild(labelBtn);
+          wrap.appendChild(delBtn);
+          container.appendChild(wrap);
         })(known[i]);
       }
 
@@ -1135,11 +1231,7 @@
 
     function setListFilterTag(tag) {
       activeFilterTag = tag;
-      if (tag === 'ALL' || tag === '序盤' || tag === '中盤' || tag === 'ヨセ') {
-        isTacticDrawerOpen = false;
-      } else {
-        isTacticDrawerOpen = false; // 戦法を選んだらドロワーを閉じてリストを見やすくする
-      }
+      isTacticDrawerOpen = false;
       updateListUI();
     }
 
@@ -1156,7 +1248,6 @@
       topRow.innerHTML = '';
       drawer.innerHTML = '';
 
-      // 第1階層：すべて / 序盤 / 中盤 / ヨセ
       var fixedTags = ['ALL', '序盤', '中盤', 'ヨセ'];
       for (var i = 0; i < fixedTags.length; i++) {
         (function(tag) {
@@ -1169,7 +1260,6 @@
         })(fixedTags[i]);
       }
 
-      // 戦法ボタン（階層展開トリガー）
       var knownTactics = getAllKnownTactics();
       if (knownTactics.length > 0) {
         var isTacticSelected = (fixedTags.indexOf(activeFilterTag) === -1);
@@ -1184,7 +1274,6 @@
         tacticTriggerBtn.onclick = toggleTacticDrawer;
         topRow.appendChild(tacticTriggerBtn);
 
-        // 第2階層：戦法一覧ドロワー
         for (var j = 0; j < knownTactics.length; j++) {
           (function(tName) {
             var tBtn = document.createElement('button');
