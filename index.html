@@ -306,7 +306,6 @@
       resize: vertical;
     }
 
-    /* 自動タイトルプレビュー表示 */
     .auto-title-preview {
       background: #0f172a;
       border: 1px dashed #38bdf8;
@@ -320,7 +319,7 @@
       align-items: center;
     }
 
-    /* タグ・フェーズ選択チップ */
+    /* タグ・フェーズ選択チップ（横書き・折り返し防止） */
     .chip-group {
       display: flex;
       flex-wrap: wrap;
@@ -335,6 +334,11 @@
       border: 1px solid #475569;
       color: #cbd5e1;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       transition: all 0.15s;
     }
     .tag-chip.selected-phase {
@@ -350,6 +354,11 @@
     .tag-chip.filter-active {
       background: #2563eb;
       border-color: #60a5fa;
+      color: #ffffff;
+    }
+    .tag-chip.tactic-active {
+      background: #7c3aed;
+      border-color: #a78bfa;
       color: #ffffff;
     }
     .tactic-add-row {
@@ -374,6 +383,26 @@
       background: rgba(124, 58, 237, 0.25);
       color: #c4b5fd;
       border: 1px solid rgba(167, 139, 250, 0.4);
+    }
+
+    /* 一覧画面の2階層フィルター */
+    .filter-top-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .tactic-drawer {
+      display: none;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tactic-drawer.open {
+      display: flex;
     }
 
     .edit-toolbar {
@@ -542,17 +571,6 @@
       color: #f1f5f9;
       border-color: #64748b;
     }
-
-    .filter-scroll-bar {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-      scrollbar-width: none;
-    }
-    .filter-scroll-bar::-webkit-scrollbar {
-      display: none;
-    }
     
     .q-list {
       width: 100%;
@@ -708,8 +726,11 @@
       <!-- キーワード検索 -->
       <input type="text" class="input-text" id="listSearchInput" placeholder="🔍 戦法名・タイトル・解説で検索..." oninput="updateListUI()">
 
-      <!-- 絞り込みチップバー -->
-      <div class="filter-scroll-bar" id="listFilterBar"></div>
+      <!-- 第1階層：局面フェーズ ＋ 戦法メニュー展開ボタン -->
+      <div class="filter-top-row" id="listFilterTopRow"></div>
+
+      <!-- 第2階層：戦法名一覧ドロワー（タップ時のみ展開） -->
+      <div class="tactic-drawer" id="listTacticDrawer"></div>
 
       <div class="q-list" id="questionsContainer"></div>
     </div>
@@ -755,6 +776,7 @@
     var selectedPhase = '';
     var selectedTactics = [];
     var activeFilterTag = 'ALL';
+    var isTacticDrawerOpen = false;
 
     function buildTitleFromTags(phase, tactics, pendingInput) {
       var list = Array.isArray(tactics) ? tactics.slice() : [];
@@ -1113,28 +1135,69 @@
 
     function setListFilterTag(tag) {
       activeFilterTag = tag;
+      if (tag === 'ALL' || tag === '序盤' || tag === '中盤' || tag === 'ヨセ') {
+        isTacticDrawerOpen = false;
+      } else {
+        isTacticDrawerOpen = false; // 戦法を選んだらドロワーを閉じてリストを見やすくする
+      }
       updateListUI();
     }
 
+    function toggleTacticDrawer() {
+      isTacticDrawerOpen = !isTacticDrawerOpen;
+      renderListFilterBar();
+    }
+
     function renderListFilterBar() {
-      var bar = document.getElementById('listFilterBar');
-      if (!bar) return;
-      bar.innerHTML = '';
+      var topRow = document.getElementById('listFilterTopRow');
+      var drawer = document.getElementById('listTacticDrawer');
+      if (!topRow || !drawer) return;
 
+      topRow.innerHTML = '';
+      drawer.innerHTML = '';
+
+      // 第1階層：すべて / 序盤 / 中盤 / ヨセ
       var fixedTags = ['ALL', '序盤', '中盤', 'ヨセ'];
-      var knownTactics = getAllKnownTactics();
-      var allTags = fixedTags.concat(knownTactics);
-
-      for (var i = 0; i < allTags.length; i++) {
+      for (var i = 0; i < fixedTags.length; i++) {
         (function(tag) {
           var btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'tag-chip' + (activeFilterTag === tag ? ' filter-active' : '');
           btn.textContent = (tag === 'ALL') ? 'すべて' : tag;
           btn.onclick = function() { setListFilterTag(tag); };
-          bar.appendChild(btn);
-        })(allTags[i]);
+          topRow.appendChild(btn);
+        })(fixedTags[i]);
       }
+
+      // 戦法ボタン（階層展開トリガー）
+      var knownTactics = getAllKnownTactics();
+      if (knownTactics.length > 0) {
+        var isTacticSelected = (fixedTags.indexOf(activeFilterTag) === -1);
+        var tacticTriggerBtn = document.createElement('button');
+        tacticTriggerBtn.type = 'button';
+        tacticTriggerBtn.className = 'tag-chip' + (isTacticSelected ? ' tactic-active' : '');
+        if (isTacticSelected) {
+          tacticTriggerBtn.textContent = '戦法: ' + activeFilterTag + (isTacticDrawerOpen ? ' ▲' : ' ▼');
+        } else {
+          tacticTriggerBtn.textContent = '戦法名' + (isTacticDrawerOpen ? ' ▲' : ' ▼');
+        }
+        tacticTriggerBtn.onclick = toggleTacticDrawer;
+        topRow.appendChild(tacticTriggerBtn);
+
+        // 第2階層：戦法一覧ドロワー
+        for (var j = 0; j < knownTactics.length; j++) {
+          (function(tName) {
+            var tBtn = document.createElement('button');
+            tBtn.type = 'button';
+            tBtn.className = 'tag-chip' + (activeFilterTag === tName ? ' tactic-active' : '');
+            tBtn.textContent = tName;
+            tBtn.onclick = function() { setListFilterTag(tName); };
+            drawer.appendChild(tBtn);
+          })(knownTactics[j]);
+        }
+      }
+
+      drawer.classList.toggle('open', isTacticDrawerOpen && knownTactics.length > 0);
     }
 
     function renderBoard() {
@@ -1945,7 +2008,7 @@
     }
 
     function saveCurrentQuestion(forceAsNew) {
-      addCustomTactic(); // 入力途中の戦法名があれば確定させる
+      addCustomTactic();
 
       var autoTitle = buildTitleFromTags(selectedPhase, selectedTactics, '');
       var turn = document.getElementById('qTurn').value;
