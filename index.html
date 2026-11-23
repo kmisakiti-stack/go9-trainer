@@ -306,6 +306,20 @@
       resize: vertical;
     }
 
+    /* 自動タイトルプレビュー表示 */
+    .auto-title-preview {
+      background: #0f172a;
+      border: 1px dashed #38bdf8;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      color: #38bdf8;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
     /* タグ・フェーズ選択チップ */
     .chip-group {
       display: flex;
@@ -635,11 +649,6 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">問題タイトル</label>
-        <input type="text" class="input-text" id="qTitle" placeholder="例: ブラックブーメラン対策 D3">
-      </div>
-
       <!-- 局面（序盤・中盤・ヨセ） -->
       <div class="form-group">
         <label class="form-label">局面フェーズ</label>
@@ -655,9 +664,15 @@
         <label class="form-label">戦法名（タップ選択 または 新規追加）</label>
         <div class="chip-group" id="tacticChipsContainer"></div>
         <div class="tactic-add-row">
-          <input type="text" class="input-text" id="newTacticInput" placeholder="例: ブラックブーメラン, 振り子" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTactic();}">
+          <input type="text" class="input-text" id="newTacticInput" placeholder="例: ブラックブーメラン, 振り子" oninput="updateAutoTitlePreview()" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTactic();}">
           <button type="button" class="pick-btn" onclick="addCustomTactic()">＋ 追加</button>
         </div>
+      </div>
+
+      <!-- タグから自動生成されるタイトルプレビュー -->
+      <div class="auto-title-preview">
+        <span style="font-size:0.72rem; color:#94a3b8; font-weight:600;">表示名:</span>
+        <span id="autoTitlePreviewText">9路盤 実戦研究</span>
       </div>
 
       <input type="hidden" id="qTurn" value="B">
@@ -693,7 +708,7 @@
       <!-- キーワード検索 -->
       <input type="text" class="input-text" id="listSearchInput" placeholder="🔍 戦法名・タイトル・解説で検索..." oninput="updateListUI()">
 
-      <!-- 絞り込みチップバー（すべて / 序盤 / 中盤 / ヨセ / 登録済み戦法名） -->
+      <!-- 絞り込みチップバー -->
       <div class="filter-scroll-bar" id="listFilterBar"></div>
 
       <div class="q-list" id="questionsContainer"></div>
@@ -737,10 +752,39 @@
     var answered = false;
     var exploreHistory = [];
 
-    // 局面・戦法タグの状態
     var selectedPhase = '';
     var selectedTactics = [];
-    var activeFilterTag = 'ALL'; // 'ALL', '序盤', '中盤', 'ヨセ', または戦法名
+    var activeFilterTag = 'ALL';
+
+    function buildTitleFromTags(phase, tactics, pendingInput) {
+      var list = Array.isArray(tactics) ? tactics.slice() : [];
+      if (pendingInput) {
+        var parts = pendingInput.split(/[,、\s]+/);
+        for (var i = 0; i < parts.length; i++) {
+          var v = parts[i].trim();
+          if (v && list.indexOf(v) === -1) list.push(v);
+        }
+      }
+      var tacticStr = list.join('・');
+      if (phase && tacticStr) return phase + ' / ' + tacticStr;
+      if (tacticStr) return tacticStr;
+      if (phase) return phase;
+      return '9路盤 実戦研究';
+    }
+
+    function updateAutoTitlePreview() {
+      var el = document.getElementById('autoTitlePreviewText');
+      if (!el) return;
+      var inp = document.getElementById('newTacticInput');
+      var pending = inp ? inp.value.trim() : '';
+      el.textContent = buildTitleFromTags(selectedPhase, selectedTactics, pending);
+    }
+
+    function getQuestionDisplayTitle(q) {
+      if (!q) return '無題の問題';
+      if (q.title && q.title.trim() !== '') return q.title;
+      return buildTitleFromTags(q.phase || '', q.tactics || [], '');
+    }
 
     function unlockAudio() {
       try {
@@ -953,7 +997,7 @@
     var questions = [
       {
         id: 1,
-        title: "基本ヨセ サンプル",
+        title: "ヨセ",
         phase: "ヨセ",
         tactics: [],
         moveCount: 45,
@@ -990,7 +1034,6 @@
     var PADDING = 68;
     var STEP = (C_SIZE - PADDING * 2) / 8;
 
-    // --- 局面・戦法タグ制御ロジック ---
     function getAllKnownTactics() {
       var set = {};
       for (var i = 0; i < questions.length; i++) {
@@ -1044,14 +1087,12 @@
     }
 
     function renderTagSelectors() {
-      // 局面チップ
       var phaseBtns = document.querySelectorAll('#phaseChipsContainer .tag-chip');
       phaseBtns.forEach(function(btn) {
         var p = btn.getAttribute('data-phase');
         btn.classList.toggle('selected-phase', p === selectedPhase);
       });
 
-      // 戦法チップ
       var container = document.getElementById('tacticChipsContainer');
       if (!container) return;
       container.innerHTML = '';
@@ -1066,6 +1107,8 @@
           container.appendChild(btn);
         })(known[i]);
       }
+
+      updateAutoTitlePreview();
     }
 
     function setListFilterTag(tag) {
@@ -1749,7 +1792,8 @@
       var titleDisplay = document.getElementById('currentQTitle');
       if (titleDisplay) {
         var rotLabel = (currentTab === 'solve' && autoRotateMode && currentTransform > 0) ? ' 🔄' : '';
-        var translatedTitle = translateCommentCoords(q.title || '無題の問題', currentTransform);
+        var dispTitle = getQuestionDisplayTitle(q);
+        var translatedTitle = translateCommentCoords(dispTitle, currentTransform);
         titleDisplay.textContent = '#' + (currentIdx + 1) + ' ' + translatedTitle + rotLabel;
       }
 
@@ -1901,9 +1945,9 @@
     }
 
     function saveCurrentQuestion(forceAsNew) {
-      addCustomTactic(); // 入力欄に書きかけの戦法名があれば自動で確定反映
+      addCustomTactic(); // 入力途中の戦法名があれば確定させる
 
-      var title = document.getElementById('qTitle').value.trim() || "無題の問題";
+      var autoTitle = buildTitleFromTags(selectedPhase, selectedTactics, '');
       var turn = document.getElementById('qTurn').value;
       var moveCount = parseInt(document.getElementById('qMoveCount').value) || 1;
       var capB = parseInt(document.getElementById('qCapB').value) || 0;
@@ -1930,7 +1974,7 @@
 
       var newEntry = {
         id: (!forceAsNew && editingQuestionId !== null) ? editingQuestionId : Date.now(),
-        title: title,
+        title: autoTitle,
         phase: selectedPhase,
         tactics: selectedTactics.slice(),
         turn: turn,
@@ -1971,7 +2015,6 @@
       editHistory = [];
       updateUndoButton();
 
-      document.getElementById('qTitle').value = q.title || '';
       selectedPhase = q.phase || '';
       selectedTactics = Array.isArray(q.tactics) ? q.tactics.slice() : [];
       document.getElementById('newTacticInput').value = '';
@@ -2000,7 +2043,7 @@
 
       toggleExtraCandidates(hasExtra);
       document.getElementById('editBanner').classList.add('show');
-      document.getElementById('editBannerText').innerHTML = '問題「' + q.title + '」を編集中 (上書き保存)';
+      document.getElementById('editBannerText').innerHTML = '問題「' + getQuestionDisplayTitle(q) + '」を編集中';
       document.getElementById('saveBtn').innerHTML = '上書き保存';
       document.getElementById('saveAsNewBtn').style.display = 'flex';
       setTab('create', true);
@@ -2021,7 +2064,6 @@
 
       board = Array(9).fill(0).map(function() { return Array(9).fill(0); });
       nextEditColor = 1;
-      document.getElementById('qTitle').value = '';
       selectedPhase = '';
       selectedTactics = [];
       if (document.getElementById('newTacticInput')) document.getElementById('newTacticInput').value = '';
@@ -2092,17 +2134,16 @@
         var q = questions[idx];
         var qPhase = q.phase || '';
         var qTactics = Array.isArray(q.tactics) ? q.tactics : [];
+        var dispTitle = getQuestionDisplayTitle(q);
 
-        // タグ絞り込み判定
         if (activeFilterTag !== 'ALL') {
           var isPhaseMatch = (qPhase === activeFilterTag);
           var isTacticMatch = (qTactics.indexOf(activeFilterTag) !== -1);
           if (!isPhaseMatch && !isTacticMatch) continue;
         }
 
-        // キーワード検索判定（タイトル・戦法・局面・解説文）
         if (keyword) {
-          var searchTarget = (q.title || '') + ' ' + qPhase + ' ' + qTactics.join(' ');
+          var searchTarget = dispTitle + ' ' + qPhase + ' ' + qTactics.join(' ');
           if (q.solutions) {
             for (var s = 0; s < q.solutions.length; s++) {
               searchTarget += ' ' + (q.solutions[s].comment || '') + ' ' + (q.solutions[s].name || '');
@@ -2113,7 +2154,7 @@
 
         matchedCount++;
 
-        (function(qObj, origIdx) {
+        (function(qObj, origIdx, titleStr) {
           var item = document.createElement('div');
           item.className = 'q-item' + (origIdx === selectedListIdx ? ' selected-preview' : '');
           item.setAttribute('data-orig-idx', origIdx);
@@ -2134,7 +2175,7 @@
           }
 
           item.innerHTML = '<div style="flex:1; padding-right:6px;">' +
-              '<div style="font-weight:700;">#' + (origIdx + 1) + ' ' + qObj.title + '</div>' +
+              '<div style="font-weight:700;">#' + (origIdx + 1) + ' ' + titleStr + '</div>' +
               '<div style="font-size:0.75rem; color:#94a3b8;">' + (qObj.turn === 'B' ? '黒番' : '白番') + ' / ' + (qObj.moveCount || '-') + '手目 / 正解: ' + best + '</div>' +
               (badgesHtml ? '<div style="margin-top:2px;">' + badgesHtml + '</div>' : '') +
             '</div>' +
@@ -2143,7 +2184,7 @@
               '<button class="pick-btn" style="color:#ef4444;" onclick="deleteQuestion(' + qObj.id + ')">削除</button>' +
             '</div>';
           container.appendChild(item);
-        })(q, idx);
+        })(q, idx, dispTitle);
       }
 
       var filteredEl = document.getElementById('filteredQCount');
